@@ -1,4 +1,5 @@
 using OffsetArrays
+using StaticArrays
 
 ################################################################################
 #                                      1D                                      #
@@ -30,6 +31,33 @@ face_center(grid::RegularMesh1D, i_face) = SVector{1, Float64}(dx(grid)*(Float64
 @inline cell_volume(grid::RegularMesh1D, i_cell)::Float64 = dx(grid)
 
 @inline rotation_matrix(grid::RegularMesh1D, i_face) = SMatrix{1, 1, Float64}(i_face == 1 ? -1.0 : 1.0)
+
+# Indices of the cells in the 3 stencil around i_cell
+function stencil(grid::RegularMesh1D, i_cell)
+    left_cell = i_cell == 1 ? 1 : i_cell - 1
+    right_cell = i_cell == nb_cells(grid) ? nb_cells(grid) : i_cell + 1
+    stencil = SVector{3, Int}(left_cell, i_cell, right_cell)
+    return OffsetArray(stencil, -1:1)
+end
+
+function centered_gradient(grid::RegularMesh1D, w, i_cell)
+    w_st = w[stencil(grid, i_cell)]
+    return (w_st[1] - w_st[-1])/(2dx(grid))
+end
+
+centered_gradient(grid::RegularMesh1D, w) = [centered_gradient(grid, w, i_cell) for i_cell in 1:nb_cells(grid)]
+
+function right_gradient(grid::RegularMesh1D, w, i_cell)
+    w_st = w[stencil(grid, i_cell)]
+    return (w_st[1] - w_st[0])/dx(grid)
+end
+right_gradient(grid::RegularMesh1D, w) = [right_gradient(grid, w, i_cell) for i_cell in 1:nb_cells(grid)]
+
+function left_gradient(grid::RegularMesh1D, w, i_cell)
+    w_st = w[stencil(grid, i_cell)]
+    return (w_st[0] - w_st[-1])/dx(grid)
+end
+left_gradient(grid::RegularMesh1D, w) = [left_gradient(grid, w, i_cell) for i_cell in 1:nb_cells(grid)]
 
 ################################################################################
 #                                      2D                                      #
