@@ -13,7 +13,7 @@ w = [SVector(1e5, 10.0, 10.0, is_in_disk(i) ? 0.0 : 1.0) for i in 1:nb_cells(gri
 wsupp = map(wi -> compute_wsupp(model, wi), w)
 run!(model, grid, w, wsupp, cfl=0.4, nb_time_steps=5_000)
 
-using PyPlot: plot, imshow, colorbar
+using PyPlot: figure, plot, imshow, colorbar
 function plot_field(grid, w, i)
     field = transpose(reshape([wi[i] for wi in w], (grid.nx, grid.ny)))
     imshow(field) #, vmin=0.0, vmax=1.0)
