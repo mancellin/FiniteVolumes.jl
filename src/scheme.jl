@@ -30,11 +30,10 @@ end
 bc_flux(model, w, wsupp) = (flux(model, w, wsupp), maximum(abs.(eigenvalues(model, w, wsupp))))
 
 
-function state_in_cell_at_face(w, wsupp, model, i_cell, i_face)
+function state_in_cell_at_face(grid, w, wsupp, model, i_cell, i_face)
     # Add higher order reconstruction here.
     return rotate_state(w[i_cell], wsupp[i_cell], model, rotation_matrix(grid, i_face))
 end
-
 
 function balance(model, grid, w, wsupp)
     Δv = Vector{SVector{nb_vars(model), eltype(model)}}(undef, nb_cells(grid))
@@ -45,8 +44,8 @@ function balance(model, grid, w, wsupp)
     λmax = 0.0
     @inbounds for i_face in inner_faces(grid)
         i_cell_1, i_cell_2 = cells_next_to_inner_face(grid, i_face)
-        w₁, wsupp₁ = state_in_cell_at_face(w, wsupp, model, i_cell_1, i_face)
-        w₂, wsupp₂ = state_in_cell_at_face(w, wsupp, model, i_cell_2, i_face)
+        w₁, wsupp₁ = state_in_cell_at_face(grid, w, wsupp, model, i_cell_1, i_face)
+        w₂, wsupp₂ = state_in_cell_at_face(grid, w, wsupp, model, i_cell_2, i_face)
         ϕ, newλmax = numerical_flux(model, w₁, wsupp₁, w₂, wsupp₂)
         ϕ = rotate_flux(ϕ, model, transpose(rotation_matrix(grid, i_face)))
         Δv[i_cell_1] -= ϕ * face_area(grid, i_face) / cell_volume(grid, i_cell_1)
@@ -56,7 +55,7 @@ function balance(model, grid, w, wsupp)
 
     @inbounds for i_face in boundary_faces(grid)
         i_cell = cell_next_to_boundary_face(grid, i_face)
-        w₁, wsupp₁ = state_in_cell_at_face(w, wsupp, model, i_cell, i_face)
+        w₁, wsupp₁ = state_in_cell_at_face(grid, w, wsupp, model, i_cell, i_face)
         ϕ, newλmax = bc_flux(model, w₁, wsupp₁)
         ϕ = rotate_flux(ϕ, model, transpose(rotation_matrix(grid, i_face)))
         Δv[i_cell] -= ϕ * face_area(grid, i_face) / cell_volume(grid, i_cell)
