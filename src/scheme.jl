@@ -65,7 +65,9 @@ function balance(model, grid, w, wsupp)
     return (Δv, λmax)
 end
 
-dt_from_cfl(cfl, grid, λmax) = cfl * minimum((cell_volume(grid, i_cell) for i_cell in 1:nb_cells(grid))) / (maximum(face_area(grid, i_face) for i_face in 1:nb_faces(grid)) * λmax)
+dt_from_cfl(cfl, grid, λmax)::Float64 = cfl * minimum((cell_volume(grid, i_cell) for i_cell in 1:nb_cells(grid))) / (maximum(face_area(grid, i_face) for i_face in 1:nb_faces(grid)) * λmax)
+
+cfl_from_dt(dt, grid, λmax)::Float64 = dt * (maximum(face_area(grid, i_face) for i_face in 1:nb_faces(grid)) * λmax) / minimum((cell_volume(grid, i_cell) for i_cell in 1:nb_cells(grid))) 
 
 function update!(model, grid, w, wsupp; cfl::Float64)
     Δv, λmax = balance(model, grid, w, wsupp)
@@ -75,13 +77,41 @@ function update!(model, grid, w, wsupp; cfl::Float64)
         w[i_cell] = invert_v(model, new_v)
         wsupp[i_cell] = compute_wsupp(model, w[i_cell])
     end
-    return dt::Float64
+    return (dt, cfl)
 end
 
-function run!(model, grid, w, wsupp; cfl, nb_time_steps)
+function update!(model, grids::Union{Tuple, Vector, Set}, w, wsupp; cfl)
+    # Set time step on first direction
+    dt = update!(model, grids[1], w, wsupp, cfl=cfl)
+    for grid in grids[2:end]
+        actual_cfl = update!(model, grid, w, wsupp, dt=dt)
+        if actual_cfl > cfl
+            println("Warning: cfl $actual_cfl higher than expected cfl $cfl")
+        end
+    end
+    return (dt, cfl)
+end
+
+function update!(model, grid, w, wsupp; dt::Float64)
+    Δv, λmax = balance(model, grid, w, wsupp)
+    cfl = cfl_from_dt(dt, grid, λmax)
+    @inbounds for i_cell in 1:nb_cells(grid)
+        new_v =  compute_v(model, w[i_cell], wsupp[i_cell]) + dt * Δv[i_cell]
+        w[i_cell] = invert_v(model, new_v)
+        wsupp[i_cell] = compute_wsupp(model, w[i_cell])
+    end
+    return (dt, cfl)
+end
+
+function update!(model, grids::Union{Tuple, Vector, Set}, w, wsupp; dt)
+    cfl = [update!(model, grid, w, wsupp, dt=dt) for grid in grids]
+    return (dt, maximum(cfl))
+end
+
+function run!(model, grid, w, wsupp; nb_time_steps, kwargs...)
     t = 0.0
     @showprogress 0.1 "Running " for i_time_step in 1:nb_time_steps
-        dt = update!(model, grid, w, wsupp, cfl=cfl)
+        (dt, cfl) = update!(model, grid, w, wsupp; kwargs...)
         t += dt
     end
     return t

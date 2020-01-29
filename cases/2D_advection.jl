@@ -11,7 +11,8 @@ is_in_disk(i) = norm([0.5, 0.5] - cell_center(grid, i)) < 0.3
 
 w = [SVector(1e5, 10.0, 10.0, is_in_disk(i) ? 0.0 : 1.0) for i in 1:nb_cells(grid)]
 wsupp = map(wi -> compute_wsupp(model, wi), w)
-run!(model, grid, w, wsupp, cfl=0.4, nb_time_steps=5_000)
+run!(model, directional_splitting(grid), w, wsupp, dt=1e-6, nb_time_steps=1_000)
+#= run!(model, grid, w, wsupp, dt=1e-6, nb_time_steps=1_000) =#
 
 using PyPlot: figure, plot, imshow, colorbar
 function plot_field(grid, w, i)

@@ -152,8 +152,24 @@ end
 
 struct FaceSplittedMesh{M}
     mesh::M
-    actual_faces::Vector{Int}
+    actual_faces::Set{Int}
+end
+
+function directional_splitting(grid::PeriodicRegularMesh2D)
+    horizontal_faces = Set(i for i in 1:nb_faces(grid) if _is_horizontal(i))
+    grid_y = FaceSplittedMesh{PeriodicRegularMesh2D}(grid, horizontal_faces)
+    vertical_faces = Set(i for i in 1:nb_faces(grid) if !(_is_horizontal(i)))
+    grid_x = FaceSplittedMesh{PeriodicRegularMesh2D}(grid, vertical_faces)
+    return grid_x, grid_y
 end
 
 nb_faces(mesh::FaceSplittedMesh) = length(mesh.actual_faces)
-inner_faces(mesh::FaceSplittedMesh) = mesh.actual_faces
+inner_faces(mesh::FaceSplittedMesh) = inner_faces(mesh.mesh) ∩ mesh.actual_faces
+boundary_faces(mesh::FaceSplittedMesh) = boundary_faces(mesh.mesh) ∩ mesh.actual_faces
+
+@inline nb_cells(mesh::FaceSplittedMesh) = nb_cells(mesh.mesh)
+@inline cells_next_to_inner_face(mesh::FaceSplittedMesh, i) = cells_next_to_inner_face(mesh.mesh, i)
+@inline face_area(mesh::FaceSplittedMesh, i) = face_area(mesh.mesh, i)
+@inline cell_volume(mesh::FaceSplittedMesh, i) = cell_volume(mesh.mesh, i)
+@inline rotation_matrix(mesh::FaceSplittedMesh, i) = rotation_matrix(mesh.mesh, i)
+
