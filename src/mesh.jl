@@ -121,7 +121,7 @@ end
 
 function rotation_matrix(grid::PeriodicRegularMesh2D, i_face)
     if _is_horizontal(i_face)
-        return SMatrix{2, 2, Float64}(0.0, 1.0, -1.0, 0.0)
+        return SMatrix{2, 2, Float64}(0.0, -1.0, 1.0, 0.0)
     else
         return SMatrix{2, 2, Float64}(1.0, 0.0, 0.0, 1.0)
     end
