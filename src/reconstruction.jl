@@ -1,4 +1,21 @@
 
+function muscl(limiter)
+	function reconstruction(grid, model, w, wsupp, i_cell, i_face)
+		left_∇w = left_gradient(grid, w, i_cell)
+		right_∇w = right_gradient(grid, w, i_cell)
+		dx = face_center_relative_to_cell(grid, i_cell, i_face)' * rotation_matrix(grid, i_face)[:, 1]
+		if dx > 0.0
+			limited_∇w = limiter.(left_∇w, right_∇w)
+		else
+			limited_∇w = limiter.(right_∇w, left_∇w)
+		end
+		reconstructed_w = w[i_cell] + dx*limited_∇w
+		reconstructed_wsupp = compute_wsupp(model, reconstructed_w)
+		return rotate_state(reconstructed_w, reconstructed_wsupp, model, rotation_matrix(grid, i_face))
+	end
+end
+
+
 function least_square_gradient(data)
     @assert nb_dim(grid) == 2
     A = zeros((2, 2))

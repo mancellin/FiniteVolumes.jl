@@ -40,6 +40,10 @@ function stencil(grid::RegularMesh1D, i_cell)
     return OffsetArray(stencil, -1:1)
 end
 
+function face_center_relative_to_cell(grid::RegularMesh1D, i_cell, i_face)
+	face_center(grid, i_face) - cell_center(grid, i_cell)
+end
+
 function centered_gradient(grid::RegularMesh1D, w, i_cell)
     w_st = w[stencil(grid, i_cell)]
     return (w_st[1] - w_st[-1])/(2dx(grid))
@@ -170,6 +174,41 @@ boundary_faces(mesh::FaceSplittedMesh) = boundary_faces(mesh.mesh) ∩ mesh.actu
 @inline nb_cells(mesh::FaceSplittedMesh) = nb_cells(mesh.mesh)
 @inline cells_next_to_inner_face(mesh::FaceSplittedMesh, i) = cells_next_to_inner_face(mesh.mesh, i)
 @inline face_area(mesh::FaceSplittedMesh, i) = face_area(mesh.mesh, i)
+@inline cell_center(mesh::FaceSplittedMesh, i) = cell_center(mesh.mesh, i)
 @inline cell_volume(mesh::FaceSplittedMesh, i) = cell_volume(mesh.mesh, i)
 @inline rotation_matrix(mesh::FaceSplittedMesh, i) = rotation_matrix(mesh.mesh, i)
 
+function face_center_relative_to_cell(mesh::FaceSplittedMesh{PeriodicRegularMesh2D}, i_cell, i_face)
+	@assert i_cell in cells_next_to_inner_face(mesh.mesh, i_face)
+	if _is_horizontal(i_face)
+		if i_cell == cells_next_to_inner_face(mesh.mesh, i_face)[1]
+			return SVector{2, Float64}(0.0, dy(mesh.mesh)/2)
+		else
+			return SVector{2, Float64}(0.0, -dy(mesh.mesh)/2)
+		end
+	else
+		if i_cell == cells_next_to_inner_face(mesh.mesh, i_face)[1]
+			return SVector{2, Float64}(dx(mesh.mesh)/2, 0.0)
+		else
+			return SVector{2, Float64}(-dx(mesh.mesh)/2, 0.0)
+		end
+	end
+end
+
+function stencil(mesh::FaceSplittedMesh{PeriodicRegularMesh2D}, i_cell)
+	if _is_horizontal(first(mesh.actual_faces))
+		stencil(mesh.mesh, i_cell)[:, 0]
+	else
+		stencil(mesh.mesh, i_cell)[0, :]
+	end
+end
+
+function left_gradient(grid::FaceSplittedMesh{PeriodicRegularMesh2D}, w, i_cell)
+	st = stencil(grid, i_cell)
+	return (w[st[0]] - w[st[-1]])/norm(cell_center(grid, st[0]) - cell_center(grid, st[-1]))
+end
+
+function right_gradient(grid::FaceSplittedMesh{PeriodicRegularMesh2D}, w, i_cell)
+	st = stencil(grid, i_cell)
+	return (w[st[1]] - w[st[0]])/norm(cell_center(grid, st[1]) - cell_center(grid, st[0]))
+end
