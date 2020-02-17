@@ -131,6 +131,8 @@ function rotation_matrix(grid::PeriodicRegularMesh2D, i_face)
     end
 end
 
+mod_OneTo(x, r) = mod(x - 1, r) + 1
+
 # Indices of the cells in the 3x3 stencil around i_cell
 function stencil(grid::PeriodicRegularMesh2D, i_cell)
     if i_cell % grid.nx == 0  # Last cell at the end of a row
@@ -146,7 +148,8 @@ function stencil(grid::PeriodicRegularMesh2D, i_cell)
     stencil = @SMatrix [left_cell+grid.nx i_cell+grid.nx right_cell+grid.nx;
                         left_cell         i_cell         right_cell;
                         left_cell-grid.nx i_cell-grid.nx right_cell-grid.nx]
-    stencil = (s -> mod(s, Base.OneTo(nb_cells(grid)))).(stencil)
+    #= stencil = (s -> mod(s, Base.OneTo(nb_cells(grid)))).(stencil) =#
+    stencil = (s -> mod_OneTo(s, nb_cells(grid))).(stencil)
     return OffsetArray(stencil, -1:1, -1:1)
 end
 

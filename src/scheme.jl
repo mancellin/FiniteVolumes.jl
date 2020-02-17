@@ -123,3 +123,10 @@ function run!(model, grid, w, wsupp; nb_time_steps, kwargs...)
     return t
 end
 
+function run(model, grid, w₀; kwargs...)
+	w = deepcopy(w₀)
+	wsupp = map(wi -> compute_wsupp(model, wi), w)
+	t = run!(model, grid, w, wsupp; kwargs...)
+	return t, w
+end
+
