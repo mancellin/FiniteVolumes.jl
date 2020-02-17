@@ -98,11 +98,11 @@ function update!(model, grid, w, wsupp; dt=nothing, cfl=nothing, kwargs...)
     return (dt, cfl)
 end
 
-function update!(model, grids::Union{Tuple, Vector, Set}, w, wsupp; kwargs...)
+function update!(model, grids::Union{Tuple, Vector, Set}, w, wsupp; dt=nothing, cfl=nothing, kwargs...)
     # Set time step on first direction
-	(dt_1, cfl) = update!(model, grids[1], w, wsupp; kwargs...)
+	(dt, cfl) = update!(model, grids[1], w, wsupp; dt=dt, cfl=cfl, kwargs...)
     for grid in grids[2:end]
-		(dt_i, cfl_i) = update!(model, grid, w, wsupp; dt=dt_1, reconstruction=reconstruction)
+		(dt_i, cfl_i) = update!(model, grid, w, wsupp; dt=dt, kwargs...)
         cfl = max(cfl_i, cfl)
     end
     return (dt, cfl)
@@ -112,6 +112,9 @@ function run!(model, grid, w, wsupp; nb_time_steps, kwargs...)
     t = 0.0
     @showprogress 0.1 "Running " for i_time_step in 1:nb_time_steps
         (dt, cfl) = update!(model, grid, w, wsupp; kwargs...)
+		if cfl > 1.0
+			println("!!! CFL: $cfl !!!")
+		end
         t += dt
     end
     return t
