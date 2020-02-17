@@ -30,12 +30,11 @@ end
 bc_flux(model, w, wsupp) = (flux(model, w, wsupp), maximum(abs.(eigenvalues(model, w, wsupp))))
 
 
-function state_in_cell_at_face(grid, w, wsupp, model, i_cell, i_face)
-    # Add higher order reconstruction here.
+function no_reconstruction(grid, model, w, wsupp, i_cell, i_face)
     return rotate_state(w[i_cell], wsupp[i_cell], model, rotation_matrix(grid, i_face))
 end
 
-function balance(model, grid, w, wsupp)
+function balance(model, grid, w, wsupp; reconstruction=no_reconstruction)
     Δv = Vector{SVector{nb_vars(model), eltype(model)}}(undef, nb_cells(grid))
     @inbounds for i_cell in 1:nb_cells(grid)
         Δv[i_cell] = zeros(SVector{nb_vars(model), eltype(model)})
@@ -44,8 +43,8 @@ function balance(model, grid, w, wsupp)
     λmax = 0.0
     @inbounds for i_face in inner_faces(grid)
         i_cell_1, i_cell_2 = cells_next_to_inner_face(grid, i_face)
-        w₁, wsupp₁ = state_in_cell_at_face(grid, w, wsupp, model, i_cell_1, i_face)
-        w₂, wsupp₂ = state_in_cell_at_face(grid, w, wsupp, model, i_cell_2, i_face)
+        w₁, wsupp₁ = reconstruction(grid, model, w, wsupp, i_cell_1, i_face)
+        w₂, wsupp₂ = reconstruction(grid, model, w, wsupp, i_cell_2, i_face)
         ϕ, newλmax = numerical_flux(model, w₁, wsupp₁, w₂, wsupp₂)
         ϕ = rotate_flux(ϕ, model, transpose(rotation_matrix(grid, i_face)))
         Δv[i_cell_1] -= ϕ * face_area(grid, i_face) / cell_volume(grid, i_cell_1)
@@ -55,7 +54,7 @@ function balance(model, grid, w, wsupp)
 
     @inbounds for i_face in boundary_faces(grid)
         i_cell = cell_next_to_boundary_face(grid, i_face)
-        w₁, wsupp₁ = state_in_cell_at_face(grid, w, wsupp, model, i_cell, i_face)
+        w₁, wsupp₁ = reconstruction(grid, model, w, wsupp, i_cell, i_face)
         ϕ, newλmax = bc_flux(model, w₁, wsupp₁)
         ϕ = rotate_flux(ϕ, model, transpose(rotation_matrix(grid, i_face)))
         Δv[i_cell] -= ϕ * face_area(grid, i_face) / cell_volume(grid, i_cell)
@@ -69,9 +68,28 @@ dt_from_cfl(cfl, grid, λmax)::Float64 = cfl * minimum((cell_volume(grid, i_cell
 
 cfl_from_dt(dt, grid, λmax)::Float64 = dt * (maximum(face_area(grid, i_face) for i_face in 1:nb_faces(grid)) * λmax) / minimum((cell_volume(grid, i_cell) for i_cell in 1:nb_cells(grid))) 
 
-function update!(model, grid, w, wsupp; cfl::Float64)
-    Δv, λmax = balance(model, grid, w, wsupp)
-    dt = dt_from_cfl(cfl, grid, λmax)
+isnothing(x::Nothing) = true
+isnothing(x::Any) = false
+
+function dt_and_cfl(dt, cfl, grid, λmax)
+	if isnothing(dt)
+		if isnothing(cfl)
+			error("You need to specify either a time step or a CFL")
+		else
+			return (dt_from_cfl(cfl, grid, λmax), cfl)
+		end
+	else
+		if isnothing(cfl)
+			return (dt, cfl_from_dt(dt, grid, λmax))
+		else
+			error("You need to specify a time step or a CFL, but not both")
+		end
+	end
+end
+
+function update!(model, grid, w, wsupp; dt=nothing, cfl=nothing, kwargs...)
+    Δv, λmax = balance(model, grid, w, wsupp; kwargs...)
+	(dt, cfl) = dt_and_cfl(dt, cfl, grid, λmax)
     @inbounds for i_cell in 1:nb_cells(grid)
         new_v =  compute_v(model, w[i_cell], wsupp[i_cell]) + dt * Δv[i_cell]
         w[i_cell] = invert_v(model, new_v)
@@ -80,32 +98,14 @@ function update!(model, grid, w, wsupp; cfl::Float64)
     return (dt, cfl)
 end
 
-function update!(model, grids::Union{Tuple, Vector, Set}, w, wsupp; cfl)
+function update!(model, grids::Union{Tuple, Vector, Set}, w, wsupp; kwargs...)
     # Set time step on first direction
-    dt = update!(model, grids[1], w, wsupp, cfl=cfl)
+	(dt_1, cfl) = update!(model, grids[1], w, wsupp; kwargs...)
     for grid in grids[2:end]
-        actual_cfl = update!(model, grid, w, wsupp, dt=dt)
-        if actual_cfl > cfl
-            println("Warning: cfl $actual_cfl higher than expected cfl $cfl")
-        end
+		(dt_i, cfl_i) = update!(model, grid, w, wsupp; dt=dt_1, reconstruction=reconstruction)
+        cfl = max(cfl_i, cfl)
     end
     return (dt, cfl)
-end
-
-function update!(model, grid, w, wsupp; dt::Float64)
-    Δv, λmax = balance(model, grid, w, wsupp)
-    cfl = cfl_from_dt(dt, grid, λmax)
-    @inbounds for i_cell in 1:nb_cells(grid)
-        new_v =  compute_v(model, w[i_cell], wsupp[i_cell]) + dt * Δv[i_cell]
-        w[i_cell] = invert_v(model, new_v)
-        wsupp[i_cell] = compute_wsupp(model, w[i_cell])
-    end
-    return (dt, cfl)
-end
-
-function update!(model, grids::Union{Tuple, Vector, Set}, w, wsupp; dt)
-    cfl = [update!(model, grid, w, wsupp, dt=dt) for grid in grids]
-    return (dt, maximum(cfl))
 end
 
 function run!(model, grid, w, wsupp; nb_time_steps, kwargs...)
