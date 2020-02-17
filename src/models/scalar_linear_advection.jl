@@ -12,8 +12,8 @@ nb_dims(m::ScalarLinearAdvection{T, D}) where {T, D} = D
 nb_vars(m::ScalarLinearAdvection{T, D}) where {T, D} = 1
 nb_vars_supp(m::ScalarLinearAdvection{T, D}) where {T, D} = D
 
-w_names(m::ScalarLinearAdvection{T, D}) where {T, D} = (:α)
-wsupp_names(m::ScalarLinearAdvection{T, 1}) where T = (:ux, :uy)
+w_names(m::ScalarLinearAdvection{T, D}) where {T, D} = (:α,)
+wsupp_names(m::ScalarLinearAdvection{T, 1}) where T = (:ux,)
 wsupp_names(m::ScalarLinearAdvection{T, 2}) where T = (:ux, :uy)
 
 @inline compute_wsupp(m::ScalarLinearAdvection, w) = m.velocity
