@@ -84,8 +84,8 @@ PeriodicRegularMesh2D(nx::Int, ny::Int) = PeriodicRegularMesh2D(0.0, 1.0, nx, 0.
 
 function cell_center(grid::PeriodicRegularMesh2D, i_cell)
     SVector{2, Float64}(
-                        dx(grid)*((i_cell - 1) % grid.nx + 0.5),
-                        dy(grid)*((i_cell - 1) ÷ grid.nx + 0.5)
+                        grid.x_min + dx(grid)*((i_cell - 1) % grid.nx + 0.5),
+                        grid.x_min + dy(grid)*((i_cell - 1) ÷ grid.nx + 0.5)
                        )
 end
 

@@ -112,6 +112,9 @@ function run!(model, grid, w, wsupp; nb_time_steps, kwargs...)
     t = 0.0
     @showprogress 0.1 "Running " for i_time_step in 1:nb_time_steps
         (dt, cfl) = update!(model, grid, w, wsupp; kwargs...)
+		if i_time_step == 1
+			println("CFL: $cfl")
+		end
 		if cfl > 1.0
 			println("!!! CFL: $cfl !!!")
 		end
