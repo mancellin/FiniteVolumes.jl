@@ -1,5 +1,6 @@
 using OffsetArrays
 using StaticArrays
+using LinearAlgebra: norm
 
 ################################################################################
 #                                      1D                                      #
