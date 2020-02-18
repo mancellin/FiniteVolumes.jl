@@ -136,22 +136,56 @@ mod_OneTo(x, r) = mod(x - 1, r) + 1
 
 # Indices of the cells in the 3x3 stencil around i_cell
 function stencil(grid::PeriodicRegularMesh2D, i_cell)
-    if i_cell % grid.nx == 0  # Last cell at the end of a row
-        right_cell = i_cell + 1 - grid.nx
-    else  # General case
-        right_cell = i_cell + 1
-    end
-    if i_cell % grid.nx == 1  # First cell at the beggining of a row
-        left_cell = i_cell - 1 + grid.nx
+	if i_cell % grid.nx == 0  # Last cell at the end of a row
+		right_cell = i_cell + 1 - grid.nx
+	else  # General case
+		right_cell = i_cell + 1
+	end
+	if i_cell % grid.nx == 1  # First cell at the beggining of a row
+		left_cell = i_cell - 1 + grid.nx
+	else
+		left_cell = i_cell - 1
+	end
+	stencil = @SMatrix [left_cell-grid.nx   left_cell    left_cell+grid.nx;
+						i_cell-grid.nx      i_cell       i_cell+grid.nx;
+                        right_cell-grid.nx  right_cell   right_cell+grid.nx]
+	#= stencil = (s -> mod(s, Base.OneTo(nb_cells(grid)))).(stencil) =#
+	stencil = (s -> mod_OneTo(s, nb_cells(grid))).(stencil)
+	return OffsetArray(stencil, -1:1, -1:1)
+end
+
+function central_differences_gradient(grid::PeriodicRegularMesh2D, w, i_cell)
+	st = stencil(grid, i_cell)
+	dwdx = (w[st[1, 0]] - w[st[-1, 0]])/(2dx(grid))
+	dwdy = (w[st[0, 1]] - w[st[0, -1]])/(2dy(grid))
+	return SVector{2, Float64}(dwdx, dwdy)
+end
+
+function youngs_gradient(grid::PeriodicRegularMesh2D, w, i_cell)
+	st = stencil(grid, i_cell)
+	dwdx = (w[st[1, 1]] + 2w[st[1, 0]] + w[st[1, -1]] - w[st[-1, 1]] - 2w[st[-1, 0]] - w[st[-1, -1]])/(8dx(grid))
+	dwdy = (w[st[1, 1]] + 2w[st[0, 1]] + w[st[-1, 1]] - w[st[1, -1]] - 2w[st[0, -1]] - w[st[-1, -1]])/(8dy(grid))
+	return SVector{2, Float64}(dwdx, dwdy)
+end
+
+function least_square_gradient(grid::PeriodicRegularMesh2D, w, i_cell)
+	st = stencil(grid, i_cell)
+    A = @SMatrix zeros(2, 2)
+    b = @SVector zeros(2)
+	for i in -1:1, j in -1:1
+		Δx = i*dx(grid)
+		Δy = j*dy(grid)
+		Δu = w[st[i, j]] - w[st[0, 0]]
+		A = A + SMatrix{2, 2, Float64}(Δx^2, Δx*Δy, Δx*Δy, Δy^2)
+		b = b + SVector{2, Float64}(Δu*Δx, Δu*Δy)
+	end
+
+    if A[2, 2] == 0.0
+        #= @warning "2D mesh that is actually 1D" =#
+        return [b[1] / A[1, 1], 0.0]
     else
-        left_cell = i_cell - 1
+        return A \ b
     end
-    stencil = @SMatrix [left_cell+grid.nx i_cell+grid.nx right_cell+grid.nx;
-                        left_cell         i_cell         right_cell;
-                        left_cell-grid.nx i_cell-grid.nx right_cell-grid.nx]
-    #= stencil = (s -> mod(s, Base.OneTo(nb_cells(grid)))).(stencil) =#
-    stencil = (s -> mod_OneTo(s, nb_cells(grid))).(stencil)
-    return OffsetArray(stencil, -1:1, -1:1)
 end
 
 ################################################################################
@@ -201,9 +235,9 @@ end
 
 function stencil(mesh::FaceSplittedMesh{PeriodicRegularMesh2D}, i_cell)
 	if _is_horizontal(first(mesh.actual_faces))
-		stencil(mesh.mesh, i_cell)[:, 0]
-	else
 		stencil(mesh.mesh, i_cell)[0, :]
+	else
+		stencil(mesh.mesh, i_cell)[:, 0]
 	end
 end
 
