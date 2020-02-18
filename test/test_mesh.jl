@@ -10,6 +10,16 @@ st = FiniteVolumes.stencil(grid, 5)
 @test st[1, 0] == 6
 @test st[1, 1] == 9
 
+st = FiniteVolumes.stencil(grid, 1)
+@test st[-1, -1] == 9
+@test st[1, 0] == 2
+@test st[1, 1] == 5
+
+st = FiniteVolumes.stencil(grid, 3)
+@test st[-1, -1] == 8
+@test st[1, 0] == 1
+@test st[1, 1] == 4
+
 methods = [
 	FiniteVolumes.central_differences_gradient,
 	FiniteVolumes.youngs_gradient,
@@ -34,4 +44,11 @@ g = FiniteVolumes.youngs_gradient(grid, interface_1, 5)
 
 #= g = FiniteVolumes.youngs_gradient(grid, [1, 1, 1, 1/3, 11/12, 1, 0, 1/12, 2/3], 5) =#
 #= @test -g[1]/g[2] ≈ 2/3 =#
+
+
+gridx, gridy = directional_splitting(grid)
+@test FiniteVolumes.left_gradient(gridx, horizontal, 5) ≈ 0.0
+@test FiniteVolumes.right_gradient(gridx, horizontal, 5) ≈ 0.0
+@test FiniteVolumes.left_gradient(gridy, horizontal, 5) ≈ 1.5
+@test FiniteVolumes.right_gradient(gridy, horizontal, 5) ≈ 1.5
 

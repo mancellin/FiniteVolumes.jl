@@ -126,7 +126,7 @@ end
 
 function rotation_matrix(grid::PeriodicRegularMesh2D, i_face)
     if _is_horizontal(i_face)
-        return SMatrix{2, 2, Float64}(0.0, -1.0, 1.0, 0.0)
+        return SMatrix{2, 2, Float64}(0.0, 1.0, -1.0, 0.0)
     else
         return SMatrix{2, 2, Float64}(1.0, 0.0, 0.0, 1.0)
     end
@@ -243,10 +243,18 @@ end
 
 function left_gradient(grid::FaceSplittedMesh{PeriodicRegularMesh2D}, w, i_cell)
 	st = stencil(grid, i_cell)
-	return (w[st[0]] - w[st[-1]])/norm(cell_center(grid, st[0]) - cell_center(grid, st[-1]))
+	if _is_horizontal(first(grid.actual_faces))
+		return (w[st[0]] - w[st[-1]])/(dy(grid.mesh))
+	else
+		return (w[st[0]] - w[st[-1]])/(dx(grid.mesh))
+	end
 end
 
 function right_gradient(grid::FaceSplittedMesh{PeriodicRegularMesh2D}, w, i_cell)
 	st = stencil(grid, i_cell)
-	return (w[st[1]] - w[st[0]])/norm(cell_center(grid, st[1]) - cell_center(grid, st[0]))
+	if _is_horizontal(first(grid.actual_faces))
+		return (w[st[1]] - w[st[0]])/(dy(grid.mesh))
+	else
+		return (w[st[1]] - w[st[0]])/(dx(grid.mesh))
+	end
 end

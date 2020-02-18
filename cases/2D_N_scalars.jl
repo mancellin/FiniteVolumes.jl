@@ -4,7 +4,7 @@ using StaticArrays
 using LinearAlgebra: norm
 using FiniteVolumes
 
-grid = PeriodicRegularMesh2D(-1.0, 1.0, 100, -1.0, 1.0, 100)
+grid = PeriodicRegularMesh2D(-1.0, 1.0, 50, -1.0, 1.0, 50)
 model = NScalarLinearAdvection{2, Float64, nb_dims(grid)}(@SVector [1.0, 1.0])
 
 function triple_point(i)
@@ -36,7 +36,7 @@ end
 #= w₀ = [SVector(triple_point(i)...) for i in 1:nb_cells(grid)] =#
 w₀ = [SVector(jaouen_lagoutiere(i)...) for i in 1:nb_cells(grid)]
 
-dt = 0.002
+dt = 0.004
 nb_period = 1
 nb_time_steps = 2*ceil(Int, nb_period/dt)
 
@@ -49,9 +49,10 @@ t, w_upwind = FiniteVolumes.run(model, directional_splitting(grid), w₀,
 t, w_minmod = FiniteVolumes.run(model, directional_splitting(grid), w₀,
 								dt=dt, nb_time_steps=nb_time_steps,
 								reconstruction=FiniteVolumes.muscl(FiniteVolumes.minmod, mixed_cells))
+
 t, w_ultra = FiniteVolumes.run(model, directional_splitting(grid), w₀,
 							   dt=dt, nb_time_steps=nb_time_steps,
-							   reconstruction=FiniteVolumes.muscl(FiniteVolumes.ultrabee(0.2), mixed_cells))
+							   reconstruction=FiniteVolumes.muscl(FiniteVolumes.ultrabee(0.1), mixed_cells))
 
 
 using PyPlot
@@ -59,11 +60,11 @@ colors = [[0.3, 1.0, 0.0], [0.3, 0.0, 1.0], [0.0, 0.0, 0.0]]
 function plot_field(grid, w; title=nothing, i_fig=nothing)
 	field = Array{Float64}(undef, nb_cells(grid), 3)
 	for i in 1:nb_cells(grid)
-		if w[i][1] + w[i][2] > 1.0
-			field[i, :] = [1.0, 0.0, 0.0] # red
-		else
+		#= if w[i][1] + w[i][2] > 1.0 =#
+		#= 	field[i, :] = [1.0, 0.0, 0.0] # red =#
+		#= else =#
 			field[i, :] = w[i][1]*colors[1] + w[i][2]*colors[2] + (1.0 - w[i][1] - w[i][2])*colors[3]
-		end
+		#= end =#
 	end
 	field = permutedims(reshape(field, grid.nx, grid.ny, 3), (2, 1, 3))
 
@@ -73,7 +74,6 @@ function plot_field(grid, w; title=nothing, i_fig=nothing)
 		figure()
 	end
 	imshow(field, interpolation="none")
-	gca().invert_yaxis()
 	if !(title == nothing)
 		gca().set_title(title)
 	end
