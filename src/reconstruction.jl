@@ -6,7 +6,9 @@ ultrabee(β) = (a, b) -> a*b <= 0 ? 0.0 : (a >= 0 ? 2*max(0, min((1/β-1)*a, b))
 all_cells(wi) = true
 no_cell(wi) = false
 
-function muscl(limiter, flag=all_cells)
+identity(x) = x
+
+function muscl(limiter, flag=all_cells, renormalize=identity)
 	function reconstruction(grid, model, w, wsupp, i_cell, i_face)
 		if flag(w[i_cell])
 			left_∇w = left_gradient(grid, w, i_cell)
@@ -18,6 +20,7 @@ function muscl(limiter, flag=all_cells)
 				limited_∇w = limiter.(right_∇w, left_∇w)
 			end
 			reconstructed_w = w[i_cell] + dx*limited_∇w
+			reconstructed_w = renormalize(reconstructed_w)
 			reconstructed_wsupp = compute_wsupp(model, reconstructed_w)
 			return rotate_state(reconstructed_w, reconstructed_wsupp, model, rotation_matrix(grid, i_face))
 		else
