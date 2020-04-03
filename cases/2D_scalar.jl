@@ -30,27 +30,11 @@ t, w_ultra = FiniteVolumes.run(model, directional_splitting(grid), w₀,
 							   reconstruction=FiniteVolumes.muscl(FiniteVolumes.ultrabee(0.2)))
 
 
-using PyPlot
-function plot_field(grid, w; title=nothing, i_fig=nothing)
-    field = transpose(reshape([wi[1] for wi in w], (grid.nx, grid.ny)))
-
-	if !(i_fig == nothing)
-		figure(i_fig)
-	else
-		figure()
-	end
-
-	imshow(field, interpolation="none", vmin=0.0, vmax=1.0)
-
-	if !(title == nothing)
-		gca().set_title(title)
-	end
-    #= colorbar() =#
-end
-
-plot_field(grid, w₀, title="initial", i_fig=1)
-plot_field(grid, w_upwind, title="upwind", i_fig=2)
-plot_field(grid, w_minmod, title="minmod", i_fig=3)
-plot_field(grid, w_ultra, title="ultrabee", i_fig=4)
-show()
+using Plots
+plot(
+     plot(grid, w₀, 1, title="exact"),
+     plot(grid, w_upwind, 1, title="upwind"),
+     plot(grid, w_minmod, 1, title="minmod"),
+     plot(grid, w_ultra, 1, title="ultrabee"),
+    )
 

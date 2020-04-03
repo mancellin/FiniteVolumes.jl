@@ -16,4 +16,6 @@ include("./reconstruction.jl")
 
 include("./scheme.jl")
 
+include("./plot_recipes.jl")
+
 end

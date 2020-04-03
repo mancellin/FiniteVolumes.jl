@@ -57,32 +57,11 @@ t, w_ultra = FiniteVolumes.run(model, directional_splitting(grid), w₀,
 							   reconstruction=FiniteVolumes.muscl(FiniteVolumes.ultrabee(0.1), mixed_cells, renormalize))
 
 
-using PyPlot
-colors = [[0.3, 1.0, 0.0], [0.3, 0.0, 1.0], [0.0, 0.0, 0.0]]
-function plot_field(grid, w; title=nothing, i_fig=nothing)
-	field = Array{Float64}(undef, nb_cells(grid), 3)
-	for i in 1:nb_cells(grid)
-		if !(w[i][1] + w[i][2] + w[i][3] ≈ 1.0)
-			field[i, :] = [1.0, 0.0, 0.0] # red
-		else
-			field[i, :] = w[i][1]*colors[1] + w[i][2]*colors[2] + (1.0 - w[i][1] - w[i][2])*colors[3]
-		end
-	end
-	field = permutedims(reshape(field, grid.nx, grid.ny, 3), (2, 1, 3))
+using Plots
+plot(
+    plot(grid, w₀, (1, 2, 3)),
+    plot(grid, w_upwind, (1, 2, 3)),
+    plot(grid, w_minmod, (1, 2, 3)),
+    plot(grid, w_ultra, (1, 2, 3)),
+   )
 
-	if !(i_fig == nothing)
-		figure(i_fig)
-	else
-		figure()
-	end
-	imshow(field, interpolation="none")
-	if !(title == nothing)
-		gca().set_title(title)
-	end
-end
-
-plot_field(grid, w₀, title="initial", i_fig=1)
-plot_field(grid, w_upwind, title="upwind", i_fig=2)
-plot_field(grid, w_minmod, title="minmod", i_fig=3)
-plot_field(grid, w_ultra, title="ultrabee", i_fig=4)
-show()
