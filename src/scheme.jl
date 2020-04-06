@@ -29,6 +29,34 @@ end
 # Neuman boundary flux
 bc_flux(model, w, wsupp) = (flux(model, w, wsupp), maximum(abs.(eigenvalues(model, w, wsupp))))
 
+function numerical_flux(grid, model, w, wsupp, i_face)
+    in_local_coordinates(grid, model, w, wsupp, i_face) do model, w₁, wsupp₁, w₂, wsupp₂
+        flux₁ = flux(model, w₁, wsupp₁)
+        flux₂ = flux(model, w₂, wsupp₂)
+
+        w_int, wsupp_int = compute_w_int(model, w₁, wsupp₁, w₂, wsupp₂)
+        λ = eigenvalues(model, w_int, wsupp_int)
+
+        L₁ = left_eigenvectors(model, w₁, wsupp₁)
+        L₂ = left_eigenvectors(model, w₂, wsupp₂)
+
+        L_upwind = ifelse.(λ .> 0.0, L₁, L₂)
+        L_flux_upwind = ifelse.(λ .> 0.0, L₁ * flux₁, L₂ * flux₂)
+
+        ϕ = L_upwind \ L_flux_upwind
+
+        return ϕ, maximum(abs.(λ))
+    end
+end
+
+function in_local_coordinates(f, grid, model, w, wsupp, i_face)
+    i_cell_1, i_cell_2 = cells_next_to_inner_face(grid, i_face)
+    w₁, wsupp₁ = rotate_state(w[i_cell_1], wsupp[i_cell_1], model, rotation_matrix(grid, i_face))
+    w₂, wsupp₂ = rotate_state(w[i_cell_2], wsupp[i_cell_2], model, rotation_matrix(grid, i_face))
+    ϕ, newλmax = f(model, w₁, wsupp₁, w₂, wsupp₂)
+    ϕ = rotate_flux(ϕ, model, transpose(rotation_matrix(grid, i_face)))
+    return ϕ, newλmax
+end
 
 function no_reconstruction(grid, model, w, wsupp, i_cell, i_face)
     return rotate_state(w[i_cell], wsupp[i_cell], model, rotation_matrix(grid, i_face))
@@ -43,10 +71,11 @@ function balance(model, grid, w, wsupp; reconstruction=no_reconstruction)
     λmax = 0.0
     @inbounds for i_face in inner_faces(grid)
         i_cell_1, i_cell_2 = cells_next_to_inner_face(grid, i_face)
-        w₁, wsupp₁ = reconstruction(grid, model, w, wsupp, i_cell_1, i_face)
-        w₂, wsupp₂ = reconstruction(grid, model, w, wsupp, i_cell_2, i_face)
-        ϕ, newλmax = numerical_flux(model, w₁, wsupp₁, w₂, wsupp₂)
-        ϕ = rotate_flux(ϕ, model, transpose(rotation_matrix(grid, i_face)))
+        #= w₁, wsupp₁ = reconstruction(grid, model, w, wsupp, i_cell_1, i_face) =#
+        #= w₂, wsupp₂ = reconstruction(grid, model, w, wsupp, i_cell_2, i_face) =#
+        #= ϕ, newλmax = numerical_flux(model, w₁, wsupp₁, w₂, wsupp₂) =#
+        #= ϕ = rotate_flux(ϕ, model, transpose(rotation_matrix(grid, i_face))) =#
+        ϕ, newλmax = numerical_flux(grid, model, w, wsupp, i_face)
         Δv[i_cell_1] -= ϕ * face_area(grid, i_face) / cell_volume(grid, i_cell_1)
         Δv[i_cell_2] += ϕ * face_area(grid, i_face) / cell_volume(grid, i_cell_2)
         λmax = max(λmax, newλmax)
