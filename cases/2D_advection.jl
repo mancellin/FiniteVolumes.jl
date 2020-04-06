@@ -17,6 +17,6 @@ wsupp = (wi -> FiniteVolumes.compute_wsupp(model, wi)).(w)
 using Plots
 plot(
      plot(grid, w, 1, title="pressure"),
-     plot(grid, wsupp, 4, title="volume fracion"),
+     plot(grid, wsupp, 4, title="volume fraction"),
     )
 
