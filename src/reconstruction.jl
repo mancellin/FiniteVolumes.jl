@@ -8,7 +8,7 @@ no_cell(wi) = false
 
 identity(x) = x
 
-function muscl(limiter, flag=all_cells, renormalize=identity)
+function muscl_reconstruction(limiter, flag=all_cells, renormalize=identity)
 	function reconstruction(grid, model, w, wsupp, i_cell, i_face)
 		if flag(w[i_cell])
 			left_∇w = left_gradient(grid, w, i_cell)
