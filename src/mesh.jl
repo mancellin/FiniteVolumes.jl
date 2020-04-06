@@ -233,28 +233,32 @@ function face_center_relative_to_cell(mesh::FaceSplittedMesh{PeriodicRegularMesh
 	end
 end
 
-function stencil(mesh::FaceSplittedMesh{PeriodicRegularMesh2D}, i_cell)
-	if _is_horizontal(first(mesh.actual_faces))
-		stencil(mesh.mesh, i_cell)[0, :]
-	else
-		stencil(mesh.mesh, i_cell)[:, 0]
-	end
-end
+#= function stencil(mesh::FaceSplittedMesh{PeriodicRegularMesh2D}, i_cell) =#
+#= 	if _is_horizontal(first(mesh.actual_faces)) =#
+#= 		stencil(mesh.mesh, i_cell)[0, :] =#
+#= 	else =#
+#= 		stencil(mesh.mesh, i_cell)[:, 0] =#
+#= 	end =#
+#= end =#
+#
+stencil(mesh::FaceSplittedMesh{PeriodicRegularMesh2D}, i_cell) = stencil(mesh.mesh, i_cell)
 
 function left_gradient(grid::FaceSplittedMesh{PeriodicRegularMesh2D}, w, i_cell)
-	st = stencil(grid, i_cell)
 	if _is_horizontal(first(grid.actual_faces))
+        st = stencil(grid, i_cell)[0, :]
 		return (w[st[0]] - w[st[-1]])/(dy(grid.mesh))
 	else
+        st = stencil(grid, i_cell)[:, 0]
 		return (w[st[0]] - w[st[-1]])/(dx(grid.mesh))
 	end
 end
 
 function right_gradient(grid::FaceSplittedMesh{PeriodicRegularMesh2D}, w, i_cell)
-	st = stencil(grid, i_cell)
 	if _is_horizontal(first(grid.actual_faces))
+        st = stencil(grid, i_cell)[0, :]
 		return (w[st[1]] - w[st[0]])/(dy(grid.mesh))
 	else
+        st = stencil(grid, i_cell)[:, 0]
 		return (w[st[1]] - w[st[0]])/(dx(grid.mesh))
 	end
 end
