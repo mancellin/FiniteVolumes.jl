@@ -1,6 +1,14 @@
 using RecipesBase
 using ColorTypes
 
+@recipe function plot(grid::RegularMesh1D, w, i::Int)
+    seriestype := :steppre
+
+    x = [cell_center(grid, j)[1] + dx(grid)/2 for j in 1:nb_cells(grid)]
+    data = [wj[i] for wj in w]
+    x, data
+end
+
 @recipe function plot(grid::PeriodicRegularMesh2D, w, i::Int)
     seriestype := :heatmap
     color --> :viridis

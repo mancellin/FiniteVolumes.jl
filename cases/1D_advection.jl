@@ -12,11 +12,10 @@ w₀ = [SVector(1e5, 10.0,
 
 t_final, w = FiniteVolumes.run(model, grid, w₀, cfl=0.4, nb_time_steps=1_000)
 
-using PyPlot
-figure()
-step([cell_center(grid, i) for i in 1:nb_cells(grid)], [wi[3] for wi in w₀])
-step([cell_center(grid, i) for i in 1:nb_cells(grid)], [wi[3] for wi in w])
-figure()
-step([cell_center(grid, i) for i in 1:nb_cells(grid)], [wi[1] for wi in w₀])
-step([cell_center(grid, i) for i in 1:nb_cells(grid)], [wi[1] for wi in w])
-show()
+using Plots
+plot(
+     plot(grid, [w₀ w], 1, label=["initial" "final"], title="p"),
+     plot(grid, [w₀ w], 2, label=["initial" "final"], title="u"),
+     plot(grid, [w₀ w], 3, label=["initial" "final"], title="xi"),
+     layout=(3, 1)
+    )
