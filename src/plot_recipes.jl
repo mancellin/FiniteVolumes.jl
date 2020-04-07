@@ -11,8 +11,8 @@ end
 
 @recipe function plot(grid::PeriodicRegularMesh2D, w, i::Int)
     seriestype := :heatmap
-    color --> :viridis
-    aspectratio --> 1
+    seriescolor --> :viridis
+    aspect_ratio --> 1
 
     x = LinRange(grid.x_min, grid.x_max, grid.nx)
     y = LinRange(grid.y_min, grid.y_max, grid.ny)
