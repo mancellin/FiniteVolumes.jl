@@ -29,7 +29,25 @@ function muscl_reconstruction(limiter, flag=all_cells, renormalize=identity)
 	end
 end
 
-get_component(w::AbstractVector, i) = (x -> x[i]).(w)
+muscl(params...) = (args...) -> in_local_coordinates(local_upwind_flux, args...; reconstruction=muscl_reconstruction(params...))
+
+function vof_reconstruction(method, flag=all_cells, i_field=1)
+    function reconstruction(grid, model, w, wsupp, i_cell, i_face)
+        if flag(w[i_cell])
+            st = oriented_stencil(grid, i_cell, i_face)
+            α = get_component(w[st], i_field)
+            #= α_flux = method(α, β) =#
+            α_flux = method(α)
+            return rotate_state([α_flux], wsupp[i_cell], model, rotation_matrix(grid, i_face))
+        else
+            return rotate_state(w[i_cell], wsupp[i_cell], model, rotation_matrix(grid, i_face))
+        end
+    end
+end
+
+vof_flux(params...) = (args...) -> in_local_coordinates(local_upwind_flux, args...; reconstruction=vof_reconstruction(params...))
+
+get_component(w::AbstractArray, i) = (x -> x[i]).(w)
 
 function upwind_stencil(grid::FaceSplittedMesh{PeriodicRegularMesh2D},
                         model::Union{ScalarLinearAdvection, NScalarLinearAdvection},
@@ -43,6 +61,7 @@ function upwind_stencil(grid::FaceSplittedMesh{PeriodicRegularMesh2D},
 end
 
 const β = 0.2
+
 function lagoutiere_downwind_flux(grid::FaceSplittedMesh{PeriodicRegularMesh2D},
                                   model::ScalarLinearAdvection,
                                   w, wsupp, i_face)

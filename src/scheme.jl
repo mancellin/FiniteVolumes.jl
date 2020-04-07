@@ -40,7 +40,6 @@ function in_local_coordinates(f, grid, model, w, wsupp, i_face; reconstruction=n
 end
 
 first_order_upwind(args...) = in_local_coordinates(local_upwind_flux, args...; reconstruction=no_reconstruction)
-muscl(params...) = (args...) -> in_local_coordinates(local_upwind_flux, args...; reconstruction=muscl_reconstruction(params...))
 
 # BOUNDARY FLUX
 function in_local_coordinates_at_boundary(f, grid, model, w, wsupp, i_face; reconstruction=no_reconstruction)
