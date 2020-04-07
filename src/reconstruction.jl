@@ -29,4 +29,55 @@ function muscl_reconstruction(limiter, flag=all_cells, renormalize=identity)
 	end
 end
 
+get_component(w::AbstractVector, i) = (x -> x[i]).(w)
+
+function upwind_stencil(grid::FaceSplittedMesh{PeriodicRegularMesh2D},
+                        model::Union{ScalarLinearAdvection, NScalarLinearAdvection},
+                        w, wsupp, i_face)
+    i_cell_1, i_cell_2 = cells_next_to_inner_face(grid, i_face)
+    w₁, wsupp₁ = rotate_state(w[i_cell_1], wsupp[i_cell_1], model, rotation_matrix(grid, i_face))
+    velocity = wsupp₁[1]
+    upwind_cell = velocity > 0.0 ? i_cell_1 : i_cell_2
+    st = oriented_stencil(grid, upwind_cell, i_face)[0, :]
+    return velocity, w[st]
+end
+
+const β = 0.2
+function lagoutiere_downwind_flux(grid::FaceSplittedMesh{PeriodicRegularMesh2D},
+                                  model::ScalarLinearAdvection,
+                                  w, wsupp, i_face)
+    velocity, wst = upwind_stencil(grid, model, w, wsupp, i_face)
+    wst = get_component(wst, 1)
+    maxi = max(wst[-1], wst[0])
+    mini = min(wst[-1], wst[0])
+    bornesup = min((wst[0] - mini)/β + mini, max(wst[0], wst[1]))
+    borneinf = max((wst[0] - maxi)/β + maxi, min(wst[0], wst[1]))
+    α_flux = min(bornesup, max(borneinf, wst[1]))
+    ϕ = SVector{1, Float64}(velocity*α_flux)
+    return ϕ, abs(velocity)
+end
+
+function lagoutiere_downwind_flux(grid::FaceSplittedMesh{PeriodicRegularMesh2D},
+                                  model::NScalarLinearAdvection,
+                                  w, wsupp, i_face)
+    velocity, wst = upwind_stencil(grid, model, w, wsupp, i_face)
+    bornesup = zeros(nb_vars(model))
+    borneinf = zeros(nb_vars(model))
+    for i in 1:nb_vars(model)
+        wi = get_component(wst, i)
+        maxi = max(wi[-1], wi[0])
+        mini = min(wi[-1], wi[0])
+        bornesup[i] = min((wi[0] - mini)/β + mini, max(wi[0], wi[1]))
+        borneinf[i] = max((wi[0] - maxi)/β + maxi, min(wi[0], wi[1]))
+    end
+    for i in 1:nb_vars(model)
+        updated_borneinf = max(borneinf[i], 1.0 - sum(α_flux[j] for j in 1:(i-1)) - sum(bornesup[j] for j in (i+1):nb_vars(model)))
+        updated_bornesup = min(bornesup[i], 1.0 - sum(α_flux[j] for j in 1:(i-1)) - sum(borneinf[j] for j in (i+1):nb_vars(model)))
+        α_flux[i] = min(updated_bornesup, max(updated_borneinf, wi[1]))
+    end
+
+    ϕ = velocity*α_flux
+    return ϕ, abs(velocity)
+end
+
 

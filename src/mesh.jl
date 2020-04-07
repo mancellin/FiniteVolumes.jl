@@ -154,6 +154,19 @@ function stencil(grid::PeriodicRegularMesh2D, i_cell)
 	return OffsetArray(stencil, -1:1, -1:1)
 end
 
+function oriented_stencil(mesh::PeriodicRegularMesh2D, i_cell, i_face)
+    st = stencil(mesh, i_cell)
+    st = permutedims(st, (2, 1))
+    if FiniteVolumes._is_horizontal(i_face) && i_cell == FiniteVolumes.cells_next_to_inner_face(mesh, i_face)[1]
+        st = rotl90(st)
+    elseif FiniteVolumes._is_horizontal(i_face) && i_cell == FiniteVolumes.cells_next_to_inner_face(mesh, i_face)[2]
+        st = rotr90(st)
+    elseif !FiniteVolumes._is_horizontal(i_face) && i_cell == FiniteVolumes.cells_next_to_inner_face(mesh, i_face)[2]
+        st = rot180(st) 
+    end
+    return st
+end
+
 function central_differences_gradient(grid::PeriodicRegularMesh2D, w, i_cell)
 	st = stencil(grid, i_cell)
 	dwdx = (w[st[1, 0]] - w[st[-1, 0]])/(2dx(grid))
@@ -233,32 +246,24 @@ function face_center_relative_to_cell(mesh::FaceSplittedMesh{PeriodicRegularMesh
 	end
 end
 
-#= function stencil(mesh::FaceSplittedMesh{PeriodicRegularMesh2D}, i_cell) =#
-#= 	if _is_horizontal(first(mesh.actual_faces)) =#
-#= 		stencil(mesh.mesh, i_cell)[0, :] =#
-#= 	else =#
-#= 		stencil(mesh.mesh, i_cell)[:, 0] =#
-#= 	end =#
-#= end =#
-#
 stencil(mesh::FaceSplittedMesh{PeriodicRegularMesh2D}, i_cell) = stencil(mesh.mesh, i_cell)
 
+oriented_stencil(mesh::FaceSplittedMesh{PeriodicRegularMesh2D}, i_cell, i_face) = oriented_stencil(mesh.mesh, i_cell, i_face)
+
 function left_gradient(grid::FaceSplittedMesh{PeriodicRegularMesh2D}, w, i_cell)
+    st = stencil(grid, i_cell)
 	if _is_horizontal(first(grid.actual_faces))
-        st = stencil(grid, i_cell)[0, :]
-		return (w[st[0]] - w[st[-1]])/(dy(grid.mesh))
+		return (w[st[0, 0]] - w[st[0, -1]])/(dy(grid.mesh))
 	else
-        st = stencil(grid, i_cell)[:, 0]
-		return (w[st[0]] - w[st[-1]])/(dx(grid.mesh))
+		return (w[st[0, 0]] - w[st[-1, 0]])/(dx(grid.mesh))
 	end
 end
 
 function right_gradient(grid::FaceSplittedMesh{PeriodicRegularMesh2D}, w, i_cell)
+    st = stencil(grid, i_cell)
 	if _is_horizontal(first(grid.actual_faces))
-        st = stencil(grid, i_cell)[0, :]
-		return (w[st[1]] - w[st[0]])/(dy(grid.mesh))
+		return (w[st[0, 1]] - w[st[0, 0]])/(dy(grid.mesh))
 	else
-        st = stencil(grid, i_cell)[:, 0]
-		return (w[st[1]] - w[st[0]])/(dx(grid.mesh))
+		return (w[st[1, 0]] - w[st[0, 0]])/(dx(grid.mesh))
 	end
 end
