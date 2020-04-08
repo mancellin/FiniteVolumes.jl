@@ -49,7 +49,7 @@ vof_flux(params...) = (args...) -> in_local_coordinates(local_upwind_flux, args.
 
 get_component(w::AbstractArray, i) = (x -> x[i]).(w)
 
-function upwind_stencil(grid::FaceSplittedMesh{PeriodicRegularMesh2D},
+function upwind_stencil(grid,
                         model::Union{ScalarLinearAdvection, NScalarLinearAdvection},
                         w, wsupp, i_face)
     i_cell_1, i_cell_2 = cells_next_to_inner_face(grid, i_face)
@@ -60,6 +60,16 @@ function upwind_stencil(grid::FaceSplittedMesh{PeriodicRegularMesh2D},
     return velocity, w[st]
 end
 
+function stability_range(α, β)
+    maxi = max(α[-1], α[0])
+    mini = min(α[-1], α[0])
+    bornesup = min((α[0] - mini)/β + mini, max(α[0], α[1]))
+    borneinf = max((α[0] - maxi)/β + maxi, min(α[0], α[1]))
+    return (borneinf, bornesup)
+end
+
+cut_in_range(inf, sup, x) = min(sup, max(inf, x))
+
 const β = 0.2
 
 function lagoutiere_downwind_flux(grid::FaceSplittedMesh{PeriodicRegularMesh2D},
@@ -67,11 +77,8 @@ function lagoutiere_downwind_flux(grid::FaceSplittedMesh{PeriodicRegularMesh2D},
                                   w, wsupp, i_face)
     velocity, wst = upwind_stencil(grid, model, w, wsupp, i_face)
     wst = get_component(wst, 1)
-    maxi = max(wst[-1], wst[0])
-    mini = min(wst[-1], wst[0])
-    bornesup = min((wst[0] - mini)/β + mini, max(wst[0], wst[1]))
-    borneinf = max((wst[0] - maxi)/β + maxi, min(wst[0], wst[1]))
-    α_flux = min(bornesup, max(borneinf, wst[1]))
+    borneinf, bornesup = stability_range(wst, β)
+    α_flux = cut_in_range(borneinf, bornesup, wst[1])
     ϕ = SVector{1, Float64}(velocity*α_flux)
     return ϕ, abs(velocity)
 end
@@ -84,10 +91,7 @@ function lagoutiere_downwind_flux(grid::FaceSplittedMesh{PeriodicRegularMesh2D},
     borneinf = zeros(nb_vars(model))
     for i in 1:nb_vars(model)
         wi = get_component(wst, i)
-        maxi = max(wi[-1], wi[0])
-        mini = min(wi[-1], wi[0])
-        bornesup[i] = min((wi[0] - mini)/β + mini, max(wi[0], wi[1]))
-        borneinf[i] = max((wi[0] - maxi)/β + maxi, min(wi[0], wi[1]))
+        borneinf[i], bornesup[i] = stability_range(wi, β)
     end
     for i in 1:nb_vars(model)
         updated_borneinf = max(borneinf[i], 1.0 - sum(α_flux[j] for j in 1:(i-1)) - sum(bornesup[j] for j in (i+1):nb_vars(model)))
