@@ -16,7 +16,9 @@ end
 
     x = LinRange(grid.x_min, grid.x_max, grid.nx)
     y = LinRange(grid.y_min, grid.y_max, grid.ny)
-    field = permutedims(reshape([wj[i] for wj in w], (grid.nx, grid.ny)), (2, 1))
+    field = reshape([wj[i] for wj in w], (grid.nx, grid.ny))
+    field = permutedims(field, (2, 1))
+    field = reverse(field, dims=1)
     x, y, field
 end
 
