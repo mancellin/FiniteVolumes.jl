@@ -1,5 +1,3 @@
-using StaticArrays
-import Base.eltype
 
 struct ScalarLinearAdvection{T, D}
     velocity::SVector{D, T}
@@ -7,7 +5,7 @@ end
 
 ScalarLinearAdvection(v) = ScalarLinearAdvection{typeof(v), 1}(SVector{1, typeof(v)}(v))
 
-eltype(m::ScalarLinearAdvection{T, D}) where {T, D} = T
+Base.eltype(m::ScalarLinearAdvection{T, D}) where {T, D} = T
 nb_dims(m::ScalarLinearAdvection{T, D}) where {T, D} = D
 nb_vars(m::ScalarLinearAdvection{T, D}) where {T, D} = 1
 nb_vars_supp(m::ScalarLinearAdvection{T, D}) where {T, D} = D

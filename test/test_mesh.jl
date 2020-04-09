@@ -1,7 +1,5 @@
 using Test
 
-using StaticArrays
-using LinearAlgebra: norm
 using FiniteVolumes
 
 grid = PeriodicRegularMesh2D(3, 3)

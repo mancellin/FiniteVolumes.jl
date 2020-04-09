@@ -1,6 +1,4 @@
-using StaticArrays
 import Roots
-import Base.eltype
 
 #############################
 #  IsothermalTwoFluidEuler  #
@@ -26,7 +24,7 @@ function Base.convert(NT::Type{<:Number}, m::IsothermalTwoFluidEuler{T, D})  whe
     )
 end
 
-eltype(m::IsothermalTwoFluidEuler{T, D}) where {T, D} = T
+Base.eltype(m::IsothermalTwoFluidEuler{T, D}) where {T, D} = T
 nb_dims(m::IsothermalTwoFluidEuler{T, D}) where {T, D} = D
 nb_vars(m::IsothermalTwoFluidEuler{T, D}) where {T, D} = 2 + D
 nb_vars_supp(m::IsothermalTwoFluidEuler) = 4

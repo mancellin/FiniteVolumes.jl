@@ -1,6 +1,4 @@
-using StaticArrays
 using LinearAlgebra: I
-import Base.eltype
 
 struct NScalarLinearAdvection{N, T, D}
 	# N: number of fields
@@ -11,7 +9,7 @@ end
 
 NScalarLinearAdvection(N, v) = NScalarLinearAdvection{N, typeof(v), 1}(SVector{1, typeof(v)}(v))
 
-eltype(m::NScalarLinearAdvection{N, T, D}) where {N, T, D} = T
+Base.eltype(m::NScalarLinearAdvection{N, T, D}) where {N, T, D} = T
 nb_dims(m::NScalarLinearAdvection{N, T, D}) where {N, T, D} = D
 nb_vars(m::NScalarLinearAdvection{N, T, D}) where {N, T, D} = N
 nb_vars_supp(m::NScalarLinearAdvection{N, T, D}) where {N, T, D} = D
