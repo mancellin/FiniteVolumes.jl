@@ -80,6 +80,11 @@ function balance(model, grid, w, wsupp;
     return (Δv, λmax)
 end
 
+div(model, mesh; numerical_flux=first_order_upwind) = w -> begin
+    wsupp = map(wi -> FiniteVolumes.compute_wsupp(model, wi), w)
+    return -balance(model, mesh, w, wsupp, numerical_flux=numerical_flux)[1]
+end
+
 dt_from_cfl(cfl, grid, λmax)::Float64 = cfl * minimum((cell_volume(grid, i_cell) for i_cell in 1:nb_cells(grid))) / (maximum(face_area(grid, i_face) for i_face in 1:nb_faces(grid)) * λmax)
 
 cfl_from_dt(dt, grid, λmax)::Float64 = dt * (maximum(face_area(grid, i_face) for i_face in 1:nb_faces(grid)) * λmax) / minimum((cell_volume(grid, i_cell) for i_cell in 1:nb_cells(grid))) 
