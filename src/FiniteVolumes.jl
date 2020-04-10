@@ -2,6 +2,8 @@ module FiniteVolumes
 
 using StaticArrays
 
+include("./models/abstract.jl")
+
 include("./models/scalar_linear_advection.jl")
 export ScalarLinearAdvection
 

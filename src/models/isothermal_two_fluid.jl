@@ -1,10 +1,6 @@
 import Roots
 
-#############################
-#  IsothermalTwoFluidEuler  #
-#############################
-
-struct IsothermalTwoFluidEuler{T, D}
+struct IsothermalTwoFluidEuler{T, Dim} <: AbstractModel
     c₁::T  # Sound speed of fluid 1
     ρ₁₀::T # Reference density of fluid 1
     c₂::T  # Sound speed of fluid 2
@@ -99,8 +95,6 @@ function invert_p_newton(m::IsothermalTwoFluidEuler, ρ₀, ξ, guess)
 end
 
 ########################################
-
-@inline rotate_model(m::IsothermalTwoFluidEuler, _) = m
 
 @inline get_pξ(m::IsothermalTwoFluidEuler{T, D}, w) where {T, D} = w[1], w[2+D]
 @inline get_pρuξ(m::IsothermalTwoFluidEuler{T, 1}, w, wsupp) where {T} = w[1], wsupp[1], w[2], w[3]
