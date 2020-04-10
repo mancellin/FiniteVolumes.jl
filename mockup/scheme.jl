@@ -1,78 +1,88 @@
+abstract type AbstractMesh{Dim} end
+abstract type AbstractModel{NbVars, Dim} end
 
-struct LocalState{model, T}
-    main::SVector{nb_vars(model), T}
-    supp::SVector{nb_varsupp(model), T}
-end
+struct FVCF end
 
-struct DataOnMesh{meshtype, modeltype, floattype}
-    grid::meshtype
-    states::Vector{LocalState{modeltype, floattype}}
-end
+function numerical_normal_flux(model::AbstractModel, method::FVCF, mesh, w, i_face)
+    in_local_coordinates(mesh, model, w, i_face) do local_model, w₁, w₂
+        flux₁ = x_flux(local_model, w₁)
+        flux₂ = x_flux(local_model, w₂)
 
-function local_upwind_flux(w₁::LocalState, w₂::LocalState)
-    λ = w₁.supp[1]
-    ϕ = flux(model, λ > 0 ? w₁ : w₂)
-    return ϕ
-end
+        w_int = compute_w_int(local_model, w₁, w)
+        λ = eigenvalues(local_model, w_int)
 
-no_reconstruction(w::DataOnMesh, i_cell, i_face) = w.states[i_cell]
+        L₁ = left_eigenvectors(local_model, w₁)
+        L₂ = left_eigenvectors(local_model, w₂)
 
-function in_local_coordinates(f, w::DataOnMesh, i_face;
-                              reconstruction=no_reconstruction,)
-    i_cell_1, i_cell_2 = cells_next_to_inner_face(w.grid, i_face)
-    w₁ = rotate_state(reconstruction(w, i_cell_1, i_face), rotation_matrix(w.grid, i_face))
-    w₂ = rotate_state(reconstruction(w, i_cell_2, i_face), rotation_matrix(w.grid, i_face))
-    ϕ = f(w₁, w₂)
-    ϕ = rotate_flux(ϕ, transpose(rotation_matrix(w.grid, i_face)))
-    return ϕ
-end
+        L_upwind = ifelse.(λ .> 0.0, L₁, L₂)
+        L_flux_upwind = ifelse.(λ .> 0.0, L₁ * flux₁, L₂ * flux₂)
 
-function vof_flux(w::DataOnMesh{M, ScalarLinearAdvection, T}, i_face, t, dt) where {M, T}
-    α = (x -> x[1]).(w.states[stencil(w.grid)])
-    #= ϕ = flux(ScalarLinearAdvectio) =#
-    #= rotate_flux(SVector{1, T}(vof_α)) =#
-end
-
-function dt_from_cfl(cfl, w:DataOnMesh)
-    λmax = maximum(
-                   maximum(abs.(in_local_coordinates(compute_w_int |> eigenvalues, grid, i_face)))
-                   for i_face in 1:nb_faces(grid)
-                  )
-                   
-    return cfl * smallest_cell(grid)/biggest_face_area(grid)
-end
-
-function div(model, grid, numerical_flux, boundary_flux)
-    function balance(w::AbstractVector{LocalState}, t=nothing, tdt=nothing)
-        Δv = zeros(SVector{nb_vars(model), eltype(model)}, nb_cells(grid))
-
-        for i_face in inner_faces(grid)
-            ϕ = numerical_flux(grid, model, w, i_face, t, tdt)
-            i_cell_1, i_cell_2 = cells_next_to_inner_face(grid, i_face)
-            Δv[i_cell_1] -= ϕ * face_area(grid, i_face) / cell_volume(grid, i_cell_1)
-            Δv[i_cell_2] += ϕ * face_area(grid, i_face) / cell_volume(grid, i_cell_2)
-        end
-
-        for i_face in boundary_faces(grid)
-            ϕ = boundary_flux(grid, model, w, wsupp, i_face, t, tdt)
-            i_cell = cell_next_to_boundary_face(grid, i_face)
-            Δv[i_cell] -= ϕ * face_area(grid, i_face) / cell_volume(grid, i_cell)
-        end
-        return Δv
+        ϕ = L_upwind \ L_flux_upwind
+        return ϕ
     end
 end
 
-function using_conservative_variables!(update!, w::AbstractVector{LocalState})
-    v = compute_v.(w)
-    update!(v)
-    set_from_v!.(w, v)
+
+struct NeumannBC end
+
+function boundary_normal_flux(model::AbstractModel, bc::NeumannBC, mesh, w, i_face)
+    in_local_coordinates_at_boundary(mesh, model, w, i_face) do local_model, w₁
+        flux(local_model, w₁, face_center(mesh, i_face), normal(mesh, i_face))
+    end
 end
 
-function run()
-    for i_step in 1:nb_steps
-        dt = dt_from_cfl(cfl, grid, w)
-        using_conservative_variables!(w) do v
-            v += - dt * div(F, grid, FVCF(), NeumannBC())(w, t, tdt)
+
+"""
+    div(F::AbstractModel, mesh; method=FVCF(), bc=NeumannBC())
+    where F(w::SVector{N, T}, [x::SVector{D, T}])::SMatrix{(N, D), T}
+"""
+function div(model::AbstractModel{N, D}, mesh; method=FVCF(), bc=NeumannBC()) where {N, D}
+    function divF(w)
+        Δv = zeros(SVector{N, eltype(w)}, nb_cells(mesh))
+
+        @inbounds for i_face in inner_faces(mesh)
+            ϕ = numerical_normal_flux(Fn, method, mesh, w, i_face)
+            i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
+            Δv[i_cell_1] += ϕ * face_area(mesh, i_face) / cell_volume(mesh, i_cell_1)
+            Δv[i_cell_2] -= ϕ * face_area(mesh, i_face) / cell_volume(mesh, i_cell_2)
         end
+
+        @inbounds for i_face in boundary_faces(mesh)
+            ϕ = boundary_normal_flux(Fn, bc, mesh, w, i_face)
+            i_cell = cell_next_to_boundary_face(mesh, i_face)
+            Δv[i_cell] += ϕ * face_area(mesh, i_face) / cell_volume(mesh, i_cell)
+        end
+        return Δv 
+    end
+end
+
+struct AnonymousScalarModel{N, D}
+    flux::Function
+end
+
+AnonymousScalarModel(f::Function, dim) = AnonymousModel(f , signature(f), dim)
+
+function AnonymousScalarModel(f::Function, sig::Signature{1, 1}, dim::Int)
+
+end
+
+div(F::Function, mesh::AbstractMesh{Dim}; kwargs...) where Dim = div(AnonymousModel(F, Dim), mesh; kwargs...)
+
+
+
+
+
+
+function using_conservative_variables!(update!, model::AbstractModel, w::AbstractVector{LocalState})
+    v = compute_v.(model, w)
+    update!(v)
+    set_from_v!.(w, model, v)
+end
+
+function using_conservative_variables!(update!, v_from_w::Function, w::AbstractVector{LocalState})
+    v = v_from_w.(w)
+    update!(v)
+    for i_cell in 1:length(w)
+        w[i_cell] = Roots.find_zero(w -> v_from_w(w) - v[i_cell], w[i_cell], Roots.Newton())
     end
 end
