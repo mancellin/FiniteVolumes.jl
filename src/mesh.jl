@@ -123,6 +123,21 @@ end
 
 @inline cell_volume(grid::PeriodicRegularMesh2D, i_cell)::Float64 = dx(grid)*dy(grid)
 
+_bottom_left_corner(grid::PeriodicRegularMesh2D, i_cell) = cell_center(grid, i_cell) .- @SVector [dx(grid)/2, dy(grid)/2]
+_top_right_corner(grid::PeriodicRegularMesh2D, i_cell) = cell_center(grid, i_cell) .+ @SVector [dx(grid)/2, dy(grid)/2]
+ 
+using PolygonArea
+_cell_as_polygon(grid::PeriodicRegularMesh2D, i_cell) = rectangle(_bottom_left_corner(grid, i_cell)...,
+                                                                 _top_right_corner(grid, i_cell)...)
+
+function integrate(poly::PolygonArea.ConvexPolygon, grid::PeriodicRegularMesh2D)
+    α = zeros(SVector{1, Float64}, nb_cells(grid))
+    for i_cell in 1:nb_cells(grid)
+        α[i_cell] = @SVector [area(poly ∩ _cell_as_polygon(grid, i_cell))/cell_volume(grid, i_cell)]
+    end
+    return α
+end
+
 function rotation_matrix(grid::PeriodicRegularMesh2D, i_face)
     if _is_horizontal(i_face)
         return SMatrix{2, 2, Float64}(0.0, 1.0, -1.0, 0.0)

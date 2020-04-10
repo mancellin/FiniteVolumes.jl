@@ -27,6 +27,12 @@ git-tree-sha1 = "930db8ef90483570107f2396b1ffc6680f08e8b7"
 uuid = "6fe1bfb0-de20-5000-8ca7-80f57d26f881"
 version = "1.0.4"
 
+[[PolygonArea]]
+deps = ["RecipesBase", "StaticArrays"]
+path = "/home/matthieu/pro/code/PolygonArea.jl/"
+uuid = "f818da22-b9d0-4424-a67f-6ca99e6cd93f"
+version = "0.1.0"
+
 [[Printf]]
 deps = ["Unicode"]
 uuid = "de0858da-6303-5e67-8744-51eddeeeb8d7"
