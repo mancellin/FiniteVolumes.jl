@@ -100,6 +100,8 @@ end
 
 ########################################
 
+@inline rotate_model(m::IsothermalTwoFluidEuler, _) = m
+
 @inline get_pξ(m::IsothermalTwoFluidEuler{T, D}, w) where {T, D} = w[1], w[2+D]
 @inline get_pρuξ(m::IsothermalTwoFluidEuler{T, 1}, w, wsupp) where {T} = w[1], wsupp[1], w[2], w[3]
 @inline get_pρuξ(m::IsothermalTwoFluidEuler{T, 2}, w, wsupp) where {T} = w[1], wsupp[1], w[2], w[3], w[4]

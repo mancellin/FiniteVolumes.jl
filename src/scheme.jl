@@ -3,7 +3,7 @@ using ProgressMeter: @showprogress
 
 # NUMERICAL FLUX
 function local_upwind_flux(model::ScalarLinearAdvection, w₁, wsupp₁, w₂, wsupp₂)
-    λ = wsupp₁[1]
+    λ = model.velocity[1]
     ϕ = flux(model, λ > 0 ? w₁ : w₂, wsupp₁)
     return ϕ, abs(λ)
 end
@@ -34,7 +34,8 @@ function in_local_coordinates(f, grid, model, w, wsupp, i_face; reconstruction=n
     i_cell_1, i_cell_2 = cells_next_to_inner_face(grid, i_face)
     w₁, wsupp₁ = reconstruction(grid, model, w, wsupp, i_cell_1, i_face)
     w₂, wsupp₂ = reconstruction(grid, model, w, wsupp, i_cell_2, i_face)
-    ϕ, newλmax = f(model, w₁, wsupp₁, w₂, wsupp₂)
+    local_model = rotate_model(model, rotation_matrix(grid, i_face))
+    ϕ, newλmax = f(local_model, w₁, wsupp₁, w₂, wsupp₂)
     ϕ = rotate_flux(ϕ, model, transpose(rotation_matrix(grid, i_face)))
     return ϕ, newλmax
 end
@@ -45,7 +46,8 @@ first_order_upwind(args...) = in_local_coordinates(local_upwind_flux, args...; r
 function in_local_coordinates_at_boundary(f, grid, model, w, wsupp, i_face; reconstruction=no_reconstruction)
     i_cell = cell_next_to_boundary_face(grid, i_face)
     w₁, wsupp₁ = reconstruction(grid, model, w, wsupp, i_cell, i_face)
-    ϕ, newλmax = f(model, w₁, wsupp₁)
+    local_model = rotate_model(model, rotation_matrix(grid, i_face))
+    ϕ, newλmax = f(local_model, w₁, wsupp₁)
     ϕ = rotate_flux(ϕ, model, transpose(rotation_matrix(grid, i_face)))
     return ϕ, newλmax
 end
