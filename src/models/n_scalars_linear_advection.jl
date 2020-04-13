@@ -16,7 +16,7 @@ w_names(m::NScalarLinearAdvection{N, T, D}) where {N, T, D} = Tuple(Symbol("α_$
 
 rotate_model(m::NScalarLinearAdvection{N, T, D}, rotation_matrix) where {N, T, D}= NScalarLinearAdvection{N, T, D}(rotation_matrix * m.velocity)
 
-function flux(m::NScalarLinearAdvection{N, T, D}, w, wsupp) where {N, T, D}
+function normal_flux(m::NScalarLinearAdvection{N, T, D}, w, wsupp) where {N, T, D}
     return SVector{N, T}(w * m.velocity[1])
     # Only the first coordinate in the frame of the interface, i.e. the normal vector
 end

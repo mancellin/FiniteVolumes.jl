@@ -145,7 +145,7 @@ function compute_w_int(m::IsothermalTwoFluidEuler{T, 1}, w_L, wsupp_L, w_R, wsup
     return w_int, compute_wsupp(m, w_int)
 end
 
-function flux(m::IsothermalTwoFluidEuler{T, 1}, w, wsupp) where T
+function normal_flux(m::IsothermalTwoFluidEuler{T, 1}, w, wsupp) where T
     p, ρ, ux, ξ = get_pρuξ(m, w, wsupp)
     return SVector(ρ*ux, ρ*ux^2 + p, ρ*ξ*ux)
 end
@@ -219,7 +219,7 @@ function compute_w_int(m::IsothermalTwoFluidEuler{T, 2}, w_L, wsupp_L, w_R, wsup
     return w_int, compute_wsupp(m, w_int)
 end
 
-function flux(m::IsothermalTwoFluidEuler{T, 2}, w, wsupp) where T
+function normal_flux(m::IsothermalTwoFluidEuler{T, 2}, w, wsupp) where T
     p, ρ, ux, uy, ξ = get_pρuξ(m, w, wsupp)
     return SVector(ρ*ux, ρ*ux^2 + p, ρ*ux*uy, ρ*ξ*ux)
 end

@@ -4,13 +4,13 @@ using ProgressMeter: @showprogress
 # NUMERICAL FLUX
 function local_upwind_flux(model::ScalarLinearAdvection, w₁, wsupp₁, w₂, wsupp₂)
     λ = model.velocity[1]
-    ϕ = flux(model, λ > 0 ? w₁ : w₂, wsupp₁)
+    ϕ = normal_flux(model, λ > 0 ? w₁ : w₂, wsupp₁)
     return ϕ, abs(λ)
 end
 
 function local_upwind_flux(model, w₁, wsupp₁, w₂, wsupp₂)  # l-upwind FVCF
-    flux₁ = flux(model, w₁, wsupp₁)
-    flux₂ = flux(model, w₂, wsupp₂)
+    flux₁ = normal_flux(model, w₁, wsupp₁)
+    flux₂ = normal_flux(model, w₂, wsupp₂)
 
     w_int, wsupp_int = compute_w_int(model, w₁, wsupp₁, w₂, wsupp₂)
     λ = eigenvalues(model, w_int, wsupp_int)
