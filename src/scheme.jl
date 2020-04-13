@@ -53,7 +53,7 @@ function in_local_coordinates_at_boundary(f, grid, model, w, wsupp, i_face; reco
 end
 
 neumann_bc(args...) = in_local_coordinates_at_boundary(args...; reconstruction=no_reconstruction) do model, w₁, wsupp₁
-    (flux(model, w₁, wsupp₁), maximum(abs.(eigenvalues(model, w₁, wsupp₁))))
+    (normal_flux(model, w₁, wsupp₁), maximum(abs.(eigenvalues(model, w₁, wsupp₁))))
 end
 
 # BALANCE
