@@ -54,7 +54,7 @@ function upwind_stencil(grid,
                         w, wsupp, i_face)
     i_cell_1, i_cell_2 = cells_next_to_inner_face(grid, i_face)
     w₁, wsupp₁ = rotate_state(w[i_cell_1], wsupp[i_cell_1], model, rotation_matrix(grid, i_face))
-    velocity = wsupp₁[1]
+    velocity = model.velocity[1]
     upwind_cell = velocity > 0.0 ? i_cell_1 : i_cell_2
     st = oriented_stencil(grid, upwind_cell, i_face)[0, :]
     return velocity, w[st]
