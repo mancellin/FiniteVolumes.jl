@@ -7,9 +7,6 @@ include("./models/abstract.jl")
 include("./models/scalar_linear_advection.jl")
 export ScalarLinearAdvection
 
-include("./models/n_scalars_linear_advection.jl")
-export NScalarLinearAdvection
-
 include("./models/isothermal_two_fluid.jl")
 export IsothermalTwoFluidEuler
 

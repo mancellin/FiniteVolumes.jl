@@ -50,7 +50,7 @@ vof_flux(params...) = (args...) -> in_local_coordinates(local_upwind_flux, args.
 get_component(w::AbstractArray, i) = (x -> x[i]).(w)
 
 function upwind_stencil(grid,
-                        model::Union{ScalarLinearAdvection, NScalarLinearAdvection},
+                        model::ScalarLinearAdvection,
                         w, wsupp, i_face)
     i_cell_1, i_cell_2 = cells_next_to_inner_face(grid, i_face)
     w₁, wsupp₁ = rotate_state(w[i_cell_1], wsupp[i_cell_1], model, rotation_matrix(grid, i_face))
@@ -73,8 +73,8 @@ cut_in_range(inf, sup, x) = min(sup, max(inf, x))
 const β = 0.2
 
 function lagoutiere_downwind_flux(grid::FaceSplittedMesh{PeriodicRegularMesh2D},
-                                  model::ScalarLinearAdvection,
-                                  w, wsupp, i_face)
+                                  model::ScalarLinearAdvection{1, T, D},
+                                  w, wsupp, i_face) where {T, D}
     velocity, wst = upwind_stencil(grid, model, w, wsupp, i_face)
     wst = get_component(wst, 1)
     borneinf, bornesup = stability_range(wst, β)
@@ -84,8 +84,8 @@ function lagoutiere_downwind_flux(grid::FaceSplittedMesh{PeriodicRegularMesh2D},
 end
 
 function lagoutiere_downwind_flux(grid::FaceSplittedMesh{PeriodicRegularMesh2D},
-                                  model::NScalarLinearAdvection,
-                                  w, wsupp, i_face)
+                                  model::ScalarLinearAdvection{N, T, D},
+                                  w, wsupp, i_face) where {N, T, D}
     velocity, wst = upwind_stencil(grid, model, w, wsupp, i_face)
     bornesup = zeros(nb_vars(model))
     borneinf = zeros(nb_vars(model))

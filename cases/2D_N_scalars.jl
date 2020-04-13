@@ -5,7 +5,7 @@ using LinearAlgebra: norm
 using FiniteVolumes
 
 grid = PeriodicRegularMesh2D(-1.0, 1.0, 50, -1.0, 1.0, 50)
-model = NScalarLinearAdvection{3, Float64, nb_dims(grid)}(@SVector [1.0, 0.5])
+model = ScalarLinearAdvection(3, [1.0, 0.5])
 
 function triple_point(i)
 	if cell_center(grid, i)[1] < 0.0
@@ -50,14 +50,14 @@ renormalize(w) = w/(w[1] + w[2] + w[3])
 
 t, w_minmod = FiniteVolumes.run(model, directional_splitting(grid), w₀,
 								dt=dt, nb_time_steps=nb_time_steps,
-								reconstruction=FiniteVolumes.muscl(FiniteVolumes.minmod, mixed_cells, renormalize))
+								numerical_flux=FiniteVolumes.muscl(FiniteVolumes.minmod, mixed_cells, renormalize))
 
 t, w_ultra = FiniteVolumes.run(model, directional_splitting(grid), w₀,
 							   dt=dt, nb_time_steps=nb_time_steps,
-							   reconstruction=FiniteVolumes.muscl(FiniteVolumes.ultrabee(0.1), mixed_cells, renormalize))
+							   numerical_flux=FiniteVolumes.muscl(FiniteVolumes.ultrabee(0.1), mixed_cells, renormalize))
 
 
-using Plots
+using Plots; gr()
 plot(
     plot(grid, w₀, (1, 2, 3)),
     plot(grid, w_upwind, (1, 2, 3)),
