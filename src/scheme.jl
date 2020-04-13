@@ -94,6 +94,22 @@ cfl_from_dt(dt, grid, λmax)::Float64 = dt * (maximum(face_area(grid, i_face) fo
 isnothing(x::Nothing) = true
 isnothing(x::Any) = false
 
+function courant(Δt, mesh, model, w, wsupp)
+    courant = 0.0
+    for i_face in inner_faces(mesh)
+        i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
+        w₁, wsupp₁ = rotate_state(w[i_cell_1], wsupp[i_cell_1], model, rotation_matrix(mesh, i_face))
+        w₂, wsupp₂ = rotate_state(w[i_cell_2], wsupp[i_cell_2], model, rotation_matrix(mesh, i_face))
+        local_model = rotate_model(model, rotation_matrix(mesh, i_face))
+        w_int, wsupp_int = compute_w_int(local_model, w₁, wsupp₁, w₂, wsupp₂)
+        λ = eigenvalues(local_model, w_int, wsupp_int)
+        maxλ = maximum(abs.(λ))
+        courant = max(courant, maxλ * Δt * face_area(mesh, i_face) / max(cell_volume(mesh, i_cell_1), cell_volume(mesh, i_cell_2)))
+    end
+    return courant
+end
+
+
 function dt_and_cfl(dt, cfl, grid, λmax)
 	if isnothing(dt)
 		if isnothing(cfl)
