@@ -14,7 +14,7 @@ dt = 0.004
 nb_period = 1.0
 nb_time_steps = ceil(Int, nb_period/dt)
 
-w₀ = [SVector(is_in_disk(i) ? 1.0 : 0.0) for i in 1:nb_cells(grid)]
+w₀ = [is_in_disk(i) ? 1.0 : 0.0 for i in 1:nb_cells(grid)]
 
 t, w_upwind = FiniteVolumes.run(model, directional_splitting(grid), w₀,
 								dt=dt, nb_time_steps=nb_time_steps)

@@ -61,7 +61,7 @@ function balance(model, grid, w, wsupp;
                  numerical_flux=first_order_upwind,
                  boundary_flux=neumann_bc,
                 )
-    Δv = zeros(SVector{nb_vars(model), eltype(model)}, nb_cells(grid))
+    Δv = zeros(eltype(w), nb_cells(grid))
 
     λmax = 0.0
     @inbounds for i_face in inner_faces(grid)
