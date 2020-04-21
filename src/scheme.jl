@@ -56,37 +56,28 @@ end
 
 
 # BALANCE
-function balance(model, grid, w, wsupp;
-                 numerical_flux=first_order_upwind,
-                 boundary_flux=neumann_bc,
-                )
-    Δv = zeros(eltype(w), nb_cells(grid))
+function div(model, mesh, w, wsupp; numerical_flux=first_order_upwind, boundary_flux=neumann_bc)
+    Δv = zeros(eltype(w), nb_cells(mesh))
 
-    @inbounds for i_face in inner_faces(grid)
-        ϕ = numerical_flux(grid, model, w, wsupp, i_face)
-        i_cell_1, i_cell_2 = cells_next_to_inner_face(grid, i_face)
-        Δv[i_cell_1] -= ϕ * face_area(grid, i_face) / cell_volume(grid, i_cell_1)
-        Δv[i_cell_2] += ϕ * face_area(grid, i_face) / cell_volume(grid, i_cell_2)
+    @inbounds for i_face in inner_faces(mesh)
+        ϕ = numerical_flux(mesh, model, w, wsupp, i_face)
+        i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
+        Δv[i_cell_1] += ϕ * face_area(mesh, i_face) / cell_volume(mesh, i_cell_1)
+        Δv[i_cell_2] -= ϕ * face_area(mesh, i_face) / cell_volume(mesh, i_cell_2)
     end
 
-    @inbounds for i_face in boundary_faces(grid)
-        ϕ = boundary_flux(grid, model, w, wsupp, i_face)
-        i_cell = cell_next_to_boundary_face(grid, i_face)
-        Δv[i_cell] -= ϕ * face_area(grid, i_face) / cell_volume(grid, i_cell)
+    @inbounds for i_face in boundary_faces(mesh)
+        ϕ = boundary_flux(mesh, model, w, wsupp, i_face)
+        i_cell = cell_next_to_boundary_face(mesh, i_face)
+        Δv[i_cell] += ϕ * face_area(mesh, i_face) / cell_volume(mesh, i_cell)
     end
-
     return Δv
 end
 
-div(model, mesh; numerical_flux=first_order_upwind) = w -> begin
-    wsupp = map(wi -> FiniteVolumes.compute_wsupp(model, wi), w)
-    return -balance(model, mesh, w, wsupp, numerical_flux=numerical_flux)
-end
-
 function update!(model, grid, w, wsupp, Δt; kwargs...)
-    Δv = balance(model, grid, w, wsupp; kwargs...)
+    Δv = div(model, grid, w, wsupp; kwargs...)
     @inbounds for i_cell in 1:nb_cells(grid)
-        new_v =  compute_v(model, w[i_cell], wsupp[i_cell]) + Δt * Δv[i_cell]
+        new_v =  compute_v(model, w[i_cell], wsupp[i_cell]) - Δt * Δv[i_cell]
         w[i_cell] = invert_v(model, new_v)
         wsupp[i_cell] = compute_wsupp(model, w[i_cell])
     end
