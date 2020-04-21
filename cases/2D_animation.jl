@@ -15,8 +15,9 @@ w = deepcopy(w₀)
 wsupp = map(wi -> FiniteVolumes.compute_wsupp(model, wi), w)
 
 t = 0.0
+dt = 3e-6
 anim = @animate for x = 1:1_000
-    (dt, cfl) = FiniteVolumes.update!(model, directional_splitting(grid), w, wsupp; dt=3e-6)
+    global w, wsupp = FiniteVolumes.update!(model, directional_splitting(grid), w, wsupp, dt)
     global t += dt
     plot(grid, w, 1, clim=(1e5-1e-2, 1e5+1e-2))
 end every 10

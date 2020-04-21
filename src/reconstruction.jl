@@ -80,7 +80,7 @@ function lagoutiere_downwind_flux(grid::FaceSplittedMesh{PeriodicRegularMesh2D},
     borneinf, bornesup = stability_range(wst, β)
     α_flux = cut_in_range(borneinf, bornesup, wst[1])
     ϕ = eltype(w)(velocity*α_flux)
-    return ϕ, abs(velocity)
+    return ϕ
 end
 
 function lagoutiere_downwind_flux(grid::FaceSplittedMesh{PeriodicRegularMesh2D},
@@ -100,7 +100,7 @@ function lagoutiere_downwind_flux(grid::FaceSplittedMesh{PeriodicRegularMesh2D},
     end
 
     ϕ = velocity*α_flux
-    return ϕ, abs(velocity)
+    return ϕ
 end
 
 
