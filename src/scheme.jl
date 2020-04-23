@@ -90,7 +90,7 @@ end
 
 # COURANT
 
-function courant(Δt, mesh, model, w, wsupp)
+function courant(Δt, mesh, model::AbstractModel, w, wsupp)
     courant = 0.0
     for i_face in inner_faces(mesh)
         i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
@@ -103,6 +103,15 @@ function courant(Δt, mesh, model, w, wsupp)
         courant = max(courant, maxλ * Δt * face_area(mesh, i_face) / max(cell_volume(mesh, i_cell_1), cell_volume(mesh, i_cell_2)))
     end
     return courant
+end
+
+function courant(Δt, mesh::RegularMesh1D, model::ScalarLinearAdvection, w, wsupp)
+    return abs(model.velocity[1]) * Δt / dx(mesh)
+end
+
+function courant(Δt, mesh::PeriodicRegularMesh2D, model::ScalarLinearAdvection, w, wsupp)
+    vx, vy = model.velocity
+    return max(abs(vx) * Δt / dx(mesh), abs(vy) * Δt / dy(mesh))
 end
 
 
