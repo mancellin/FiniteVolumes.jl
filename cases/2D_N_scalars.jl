@@ -5,7 +5,7 @@ using LinearAlgebra: norm
 using FiniteVolumes
 
 grid = PeriodicRegularMesh2D(-1.0, 1.0, 50, -1.0, 1.0, 50)
-model = ScalarLinearAdvection(3, [1.0, 0.5])
+model = directional_splitting(ScalarLinearAdvection(3, [1.0, 0.5]))
 
 function triple_point(i)
 	if cell_center(grid, i)[1] < 0.0
@@ -43,18 +43,15 @@ nb_time_steps = 2*ceil(Int, nb_period/dt)
 const epsilon = 1e-5
 mixed_cells(wi) = epsilon <= wi[1] <= (1.0-epsilon) || epsilon <= wi[2] <= (1.0-epsilon) || epsilon <= wi[3] <= (1.0-epsilon)
 
-t, w_upwind = FiniteVolumes.run(model, directional_splitting(grid), w₀,
-								dt=dt, nb_time_steps=nb_time_steps)
-
 renormalize(w) = w/(w[1] + w[2] + w[3])
 
-t, w_minmod = FiniteVolumes.run(model, directional_splitting(grid), w₀,
-								dt=dt, nb_time_steps=nb_time_steps,
-								numerical_flux=FiniteVolumes.muscl(FiniteVolumes.minmod, mixed_cells, renormalize))
+t, w_upwind = FiniteVolumes.run(model, grid, w₀, dt=dt, nb_time_steps=nb_time_steps)
 
-t, w_ultra = FiniteVolumes.run(model, directional_splitting(grid), w₀,
-							   dt=dt, nb_time_steps=nb_time_steps,
-							   numerical_flux=FiniteVolumes.muscl(FiniteVolumes.ultrabee(0.1), mixed_cells, renormalize))
+t, w_minmod = FiniteVolumes.run(model, grid, w₀, dt=dt, nb_time_steps=nb_time_steps,
+								numerical_flux=Muscl(limiter=minmod, flag=mixed_cells, renormalize=renormalize))
+
+t, w_ultra = FiniteVolumes.run(model, grid, w₀, dt=dt, nb_time_steps=nb_time_steps,
+							   numerical_flux=Muscl(limiter=ultrabee(0.1), flag=mixed_cells, renormalize=renormalize))
 
 
 using Plots; gr()

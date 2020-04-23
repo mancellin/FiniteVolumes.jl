@@ -17,9 +17,10 @@ end
 #  Muscl  #
 ###########
 
-Base.@kwdef struct Muscl
-    limiter
-    flag=all_cells
+Base.@kwdef struct Muscl{L, F, R}
+    limiter::L
+    flag::F = all_cells
+    renormalize::R = identity
 end
 
 minmod      = (a, b) -> a*b <= 0 ? 0.0 : (a >= 0 ? min(a, b) : max(a, b))
@@ -35,8 +36,10 @@ function (s::Muscl)(grid, model::ScalarLinearAdvection, w, wsupp, i_face)
         wst = OffsetArray(SVector(wst2d[0, -1], wst2d[0, 0], wst2d[0, 1]), -1:1)
     end
     if s.flag(wst[0])::Bool
-        reconstructed_w::eltype(w) = wst[0] + 0.5 * s.limiter(wst[0] - wst[-1], wst[1] - wst[0])::eltype(w)
-        return eltype(w)(v * reconstructed_w)
+        grad_w::eltype(w) = s.limiter.(wst[0] - wst[-1], wst[1] - wst[0])
+        re_w::eltype(w) = wst[0] .+ 0.5 * grad_w
+        rere_w::eltype(w) = s.renormalize(re_w)
+        return eltype(w)(v * rere_w)
     else
         return eltype(w)(v * wst[0])
     end
@@ -46,9 +49,9 @@ end
 #  VOF  #
 #########
 
-Base.@kwdef struct VOF
-    method
-    flag=all_cells
+Base.@kwdef struct VOF{M, F}
+    method::M
+    flag::F = all_cells
 end
 
 function (s::VOF)(grid, model::ScalarLinearAdvection, w, wsupp, i_face)
