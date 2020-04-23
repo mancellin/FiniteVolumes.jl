@@ -75,25 +75,16 @@ function div(model, mesh, w, wsupp; numerical_flux=Upwind(), boundary_flux=neuma
     return Δv
 end
 
-function update!(model, grid, w, wsupp, Δt; kwargs...)
-    Δv = div(model, grid, w, wsupp; kwargs...)
-    @inbounds for i_cell in 1:nb_cells(grid)
-        new_v =  compute_v(model, w[i_cell], wsupp[i_cell]) - Δt * Δv[i_cell]
-        w[i_cell] = invert_v(model, new_v)
+function using_conservative_variables!(up!, model, w, wsupp)
+    v = zeros(eltype(w), length(w))
+    @inbounds for i_cell in 1:length(w)
+        v[i_cell] = compute_v(model, w[i_cell], wsupp[i_cell])
+    end
+    up!(v)
+    @inbounds for i_cell in 1:length(w)
+        w[i_cell] = invert_v(model, v[i_cell])
         wsupp[i_cell] = compute_wsupp(model, w[i_cell])
     end
-    #= if i_time_step == 1 =#
-    #=     println("CFL: $(courant(Δt, grid, model, w, wsupp))") =#
-    #= end =#
-    return w, wsupp
-end
-
-function update!(model, grids::Union{Tuple, Vector, Set}, w, wsupp, Δt; kwargs...)
-    # Set time step on first direction
-    for grid in grids
-        w, wsupp = update!(model, grid, w, wsupp, Δt; kwargs...)
-    end
-    return w, wsupp
 end
 
 
@@ -114,17 +105,26 @@ function courant(Δt, mesh, model, w, wsupp)
     return courant
 end
 
-function run!(model, grid, w, wsupp; nb_time_steps, dt=nothing, cfl=nothing, kwargs...)
-    t = 0.0
+
+# RUN
+
+function run!(model, mesh, w, t; nb_time_steps, dt=nothing, cfl=nothing, kwargs...)
+	wsupp = map(wi -> compute_wsupp(model, wi), w)
+
     @showprogress 0.1 "Running " for i_time_step in 1:nb_time_steps
+
         if isnothing(dt)
             if !isnothing(cfl)
-                dt = cfl/courant(1.0, grid, model, w, wsupp)
+                dt = cfl/courant(1.0, mesh, model, w, wsupp)
             else
                 error("No time step nor Courant number has been provided :(")
             end
         end
-        w, wsupp = update!(model, grid, w, wsupp, dt; kwargs...)
+
+        using_conservative_variables!(model, w, wsupp) do v
+            v .-= dt * div(model, mesh, w, wsupp; kwargs...)
+        end
+
         t += dt
     end
     return t
@@ -132,8 +132,8 @@ end
 
 function run(model, grid, w₀; kwargs...)
 	w = deepcopy(w₀)
-	wsupp = map(wi -> compute_wsupp(model, wi), w)
-	t = run!(model, grid, w, wsupp; kwargs...)
+    t = 0.0
+	run!(model, grid, w, t; kwargs...)
 	return t, w
 end
 
