@@ -20,6 +20,11 @@ ScalarLinearAdvection(v) = ScalarLinearAdvection(1, v)
 # Legacy
 NScalarLinearAdvection(args...) = ScalarLinearAdvection(args...)
 
+function directional_splitting(s::ScalarLinearAdvection{N, 2, T}) where {N, T}
+    sx, sy = s.velocity
+    [ScalarLinearAdvection{N, 2, T}([sx, zero(T)]), ScalarLinearAdvection{N, 2, T}([zero(T), sy])]
+end
+
 nb_vars(m::ScalarLinearAdvection{N, D, T}) where {N, D, T} = N
 Base.eltype(m::ScalarLinearAdvection{N, D, T}) where {N, D, T} = T
 nb_dims(m::ScalarLinearAdvection{N, D, T}) where {N, D, T} = D

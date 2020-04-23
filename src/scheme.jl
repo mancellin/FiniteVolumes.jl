@@ -108,21 +108,23 @@ end
 
 # RUN
 
-function run!(model, mesh, w, t; nb_time_steps, dt=nothing, cfl=nothing, kwargs...)
-	wsupp = map(wi -> compute_wsupp(model, wi), w)
+function run!(models, mesh, w, t; nb_time_steps, dt=nothing, cfl=nothing, kwargs...)
+    wsupp = map(wi -> compute_wsupp(models[1], wi), w)
 
     @showprogress 0.1 "Running " for i_time_step in 1:nb_time_steps
 
         if isnothing(dt)
             if !isnothing(cfl)
-                dt = cfl/courant(1.0, mesh, model, w, wsupp)
+                dt = cfl/courant(1.0, mesh, models[1], w, wsupp)
             else
                 error("No time step nor Courant number has been provided :(")
             end
         end
 
-        using_conservative_variables!(model, w, wsupp) do v
-            v .-= dt * div(model, mesh, w, wsupp; kwargs...)
+        for m in models
+            using_conservative_variables!(m, w, wsupp) do v
+                v .-= dt * div(m, mesh, w, wsupp; kwargs...)
+            end
         end
 
         t += dt
@@ -133,7 +135,10 @@ end
 function run(model, grid, w₀; kwargs...)
 	w = deepcopy(w₀)
     t = 0.0
-	run!(model, grid, w, t; kwargs...)
+    if model isa AbstractModel
+        model = [model]
+    end
+    run!(model, grid, w, t; kwargs...)
 	return t, w
 end
 

@@ -11,6 +11,9 @@ function eigenvalues end
 function left_eigenvectors end
 function right_eigenvectors end
 
+# Optional function
+function directional_splitting end
+
 # Default behavior: no supplementary variables
 nb_vars_supp(m::AbstractModel) = 0
 wsupp_names(m::AbstractModel) = Tuple([])
