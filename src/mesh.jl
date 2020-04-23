@@ -1,5 +1,4 @@
 using OffsetArrays
-using LinearAlgebra: norm
 
 ################################################################################
 #                                      1D                                      #
@@ -155,8 +154,6 @@ function rotation_matrix(grid::PeriodicRegularMesh2D, i_face)
     end
 end
 
-mod_OneTo(x, r) = mod(x - 1, r) + 1
-
 # Indices of the cells in the 3x3 stencil around i_cell
 function stencil(grid::PeriodicRegularMesh2D, i_cell)
 	if i_cell % grid.nx == 0  # Last cell at the end of a row
@@ -172,20 +169,52 @@ function stencil(grid::PeriodicRegularMesh2D, i_cell)
 	stencil = @SMatrix [left_cell-grid.nx   left_cell    left_cell+grid.nx;
 						i_cell-grid.nx      i_cell       i_cell+grid.nx;
                         right_cell-grid.nx  right_cell   right_cell+grid.nx]
-	#= stencil = (s -> mod(s, Base.OneTo(nb_cells(grid)))).(stencil) =#
-	stencil = (s -> mod_OneTo(s, nb_cells(grid))).(stencil)
+	stencil = (s -> mod(s, Base.OneTo(nb_cells(grid)))).(stencil)
 	return OffsetArray(stencil, -1:1, -1:1)
+end
+
+function _rotr90(st)
+    return OffsetArray(
+                       @SMatrix [st[1, -1]  st[0, -1]  st[-1, -1];
+                                 st[1, 0]   st[0, 0]   st[-1, 0];
+                                 st[1, 1]   st[0, 1]   st[-1, 1]]
+                       , -1:1, -1:1)
+end
+
+function _rotl90(st)
+    return OffsetArray(
+                       @SMatrix [st[-1, 1]  st[0, 1]  st[1, 1];
+                                 st[-1, 0]  st[0, 0]  st[1, 0];
+                                 st[-1, -1] st[0, -1] st[1, -1]]
+                       , -1:1, -1:1)
+end
+
+function _rot180(st)
+    return OffsetArray(
+                       @SMatrix [st[1, 1]   st[1, 0]   st[1, -1];
+                                 st[0, 1]   st[0, 0]   st[0, -1];
+                                 st[-1, 1]  st[-1, 0]  st[-1, -1]]
+                       , -1:1, -1:1)
+end
+
+function _transpose(st)
+    return OffsetArray(
+                       @SMatrix [st[-1, -1]  st[0, -1]  st[1, -1];
+                                 st[-1, 0]   st[0, 0]   st[1, 0];
+                                 st[-1, 1]   st[0, 1]   st[1, 1]]
+                       , -1:1, -1:1)
+
 end
 
 function oriented_stencil(mesh::PeriodicRegularMesh2D, i_cell, i_face)
     st = stencil(mesh, i_cell)
-    st = permutedims(st, (2, 1))
+    st = _transpose(st)
     if FiniteVolumes._is_horizontal(i_face) && i_cell == FiniteVolumes.cells_next_to_inner_face(mesh, i_face)[1]
-        st = rotl90(st)
+        st = _rotl90(st)
     elseif FiniteVolumes._is_horizontal(i_face) && i_cell == FiniteVolumes.cells_next_to_inner_face(mesh, i_face)[2]
-        st = rotr90(st)
+        st = _rotr90(st)
     elseif !FiniteVolumes._is_horizontal(i_face) && i_cell == FiniteVolumes.cells_next_to_inner_face(mesh, i_face)[2]
-        st = rot180(st) 
+        st = _rot180(st) 
     end
     return st
 end
