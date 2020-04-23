@@ -2,61 +2,62 @@ using ProgressMeter: @showprogress
 
 
 # NUMERICAL FLUX
-function local_upwind_flux(model::ScalarLinearAdvection, w₁, wsupp₁, w₂, wsupp₂)
-    λ = model.velocity[1]
-    return normal_flux(model, λ > 0 ? w₁ : w₂, wsupp₁)
-end
+struct Upwind end
 
-function local_upwind_flux(model, w₁, wsupp₁, w₂, wsupp₂)  # l-upwind FVCF
-    flux₁ = normal_flux(model, w₁, wsupp₁)
-    flux₂ = normal_flux(model, w₂, wsupp₂)
-
-    w_int, wsupp_int = compute_w_int(model, w₁, wsupp₁, w₂, wsupp₂)
-    λ = eigenvalues(model, w_int, wsupp_int)
-
-    L₁ = left_eigenvectors(model, w₁, wsupp₁)
-    L₂ = left_eigenvectors(model, w₂, wsupp₂)
-
-    L_upwind = ifelse.(λ .> 0.0, L₁, L₂)
-    L_flux_upwind = ifelse.(λ .> 0.0, L₁ * flux₁, L₂ * flux₂)
-
-    ϕ = L_upwind \ L_flux_upwind
-
-    return ϕ
-end
-
-function no_reconstruction(grid, model, w, wsupp, i_cell, i_face)
-    return rotate_state(w[i_cell], wsupp[i_cell], model, rotation_matrix(grid, i_face))
-end
-
-function in_local_coordinates(f, grid, model, w, wsupp, i_face; reconstruction=no_reconstruction)
+function in_local_coordinates(f, grid, model, w, wsupp, i_face)
     i_cell_1, i_cell_2 = cells_next_to_inner_face(grid, i_face)
-    w₁, wsupp₁ = reconstruction(grid, model, w, wsupp, i_cell_1, i_face)
-    w₂, wsupp₂ = reconstruction(grid, model, w, wsupp, i_cell_2, i_face)
+    w₁, wsupp₁ = rotate_state(w[i_cell_1], wsupp[i_cell_1], model, rotation_matrix(grid, i_face))
+    w₂, wsupp₂ = rotate_state(w[i_cell_2], wsupp[i_cell_2], model, rotation_matrix(grid, i_face))
     local_model = rotate_model(model, rotation_matrix(grid, i_face))
     ϕ = f(local_model, w₁, wsupp₁, w₂, wsupp₂)
     return rotate_flux(ϕ, model, transpose(rotation_matrix(grid, i_face)))
 end
 
-first_order_upwind(args...) = in_local_coordinates(local_upwind_flux, args...; reconstruction=no_reconstruction)
+function (::Upwind)(mesh, model::ScalarLinearAdvection, w, wsupp, i_face)
+    in_local_coordinates(mesh, model, w, wsupp, i_face) do local_model, w₁, wsupp₁, w₂, wsupp₂
+        λ = local_model.velocity[1]
+        return normal_flux(local_model, λ > 0 ? w₁ : w₂, wsupp₁)
+    end
+end
+
+function (::Upwind)(mesh, model, w, wsupp, i_face)  # l-upwind FVCF
+    in_local_coordinates(mesh, model, w, wsupp, i_face) do local_model, w₁, wsupp₁, w₂, wsupp₂
+        flux₁ = normal_flux(model, w₁, wsupp₁)
+        flux₂ = normal_flux(model, w₂, wsupp₂)
+
+        w_int, wsupp_int = compute_w_int(model, w₁, wsupp₁, w₂, wsupp₂)
+        λ = eigenvalues(model, w_int, wsupp_int)
+
+        L₁ = left_eigenvectors(model, w₁, wsupp₁)
+        L₂ = left_eigenvectors(model, w₂, wsupp₂)
+
+        L_upwind = ifelse.(λ .> 0.0, L₁, L₂)
+        L_flux_upwind = ifelse.(λ .> 0.0, L₁ * flux₁, L₂ * flux₂)
+
+        ϕ = L_upwind \ L_flux_upwind
+        return ϕ
+    end
+end
 
 
 # BOUNDARY FLUX
-function in_local_coordinates_at_boundary(f, grid, model, w, wsupp, i_face; reconstruction=no_reconstruction)
-    i_cell = cell_next_to_boundary_face(grid, i_face)
-    w₁, wsupp₁ = reconstruction(grid, model, w, wsupp, i_cell, i_face)
+function in_local_coordinates_at_boundary(f, grid, model, w, wsupp, i_face)
+    i_cell_1 = cell_next_to_boundary_face(grid, i_face)
+    w₁, wsupp₁ = rotate_state(w[i_cell_1], wsupp[i_cell_1], model, rotation_matrix(grid, i_face))
     local_model = rotate_model(model, rotation_matrix(grid, i_face))
     ϕ = f(local_model, w₁, wsupp₁)
     return rotate_flux(ϕ, model, transpose(rotation_matrix(grid, i_face)))
 end
 
-neumann_bc(args...) = in_local_coordinates_at_boundary(args...; reconstruction=no_reconstruction) do model, w₁, wsupp₁
-    normal_flux(model, w₁, wsupp₁)
+function neumann_bc(args...)
+    in_local_coordinates_at_boundary(args...) do local_model, w₁, wsupp₁
+        normal_flux(local_model, w₁, wsupp₁)
+    end
 end
 
 
 # BALANCE
-function div(model, mesh, w, wsupp; numerical_flux=first_order_upwind, boundary_flux=neumann_bc)
+function div(model, mesh, w, wsupp; numerical_flux=Upwind(), boundary_flux=neumann_bc)
     Δv = zeros(eltype(w), nb_cells(mesh))
 
     @inbounds for i_face in inner_faces(mesh)

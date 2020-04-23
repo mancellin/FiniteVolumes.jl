@@ -40,6 +40,15 @@ function stencil(grid::RegularMesh1D, i_cell)
     return OffsetArray(stencil, -1:1)
 end
 
+function oriented_stencil(mesh::RegularMesh1D, i_cell, i_face)
+    st = stencil(mesh, i_cell)
+    if face_center_relative_to_cell(mesh, i_cell, i_face)' * rotation_matrix(mesh, i_face)[:, 1] > 0
+        return st
+    else
+        return reverse(st)
+    end
+end
+
 function face_center_relative_to_cell(grid::RegularMesh1D, i_cell, i_face)
 	face_center(grid, i_face) - cell_center(grid, i_cell)
 end

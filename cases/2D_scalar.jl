@@ -24,15 +24,15 @@ mixed_cells(wi) = epsilon <= wi[1] <= (1.0-epsilon)
 
 t, w_minmod = FiniteVolumes.run(model, directional_splitting(grid), w₀,
 								dt=dt, nb_time_steps=nb_time_steps,
-								numerical_flux=FiniteVolumes.muscl(FiniteVolumes.minmod, mixed_cells))
+								numerical_flux=Muscl(limiter=minmod, flag=mixed_cells))
 
 t, w_ultra = FiniteVolumes.run(model, directional_splitting(grid), w₀,
 							   dt=dt, nb_time_steps=nb_time_steps,
-							   numerical_flux=FiniteVolumes.muscl(FiniteVolumes.ultrabee(0.2)))
+							   numerical_flux=Muscl(limiter=ultrabee(0.2)))
 
 t, w_lagout = FiniteVolumes.run(model, directional_splitting(grid), w₀,
-							   dt=dt, nb_time_steps=nb_time_steps,
-                               numerical_flux=FiniteVolumes.lagoutiere_downwind_flux)
+                                dt=dt, nb_time_steps=nb_time_steps,
+                                numerical_flux=LagoutiereDownwind(0.2))
 
 using Plots; pyplot()
 plot(
