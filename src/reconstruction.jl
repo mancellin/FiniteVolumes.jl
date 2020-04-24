@@ -52,12 +52,13 @@ end
 Base.@kwdef struct VOF{M, F}
     method::M
     flag::F = all_cells
+    β::Float64
 end
 
 function (s::VOF)(grid, model::ScalarLinearAdvection, w, wsupp, i_face)
-    v, wst = upwind_stencil(grid, model, w, wsupp, i_face)
-    α_flux = s.flag(w[0, 0]) ? method(α) : w[0, 0]
-    return eltype(w)(v * w[upwind_cell])
+    v, wst = FiniteVolumes.upwind_stencil(grid, model, w, wsupp, i_face)
+    α_flux = s.flag(wst[0, 0]) ? s.method(wst, s.β) : wst[0, 0]
+    return eltype(w)(v * α_flux)
 end
 
 
