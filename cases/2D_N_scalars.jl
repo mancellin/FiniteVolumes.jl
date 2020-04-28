@@ -5,7 +5,7 @@ using LinearAlgebra: norm
 using FiniteVolumes
 
 grid = PeriodicRegularMesh2D(-1.0, 1.0, 50, -1.0, 1.0, 50)
-model = directional_splitting(ScalarLinearAdvection(3, [1.0, 0.5]))
+model = directional_splitting(ScalarLinearAdvection(3, [1.0, 1.0]))
 
 function triple_point(i)
 	if cell_center(grid, i)[1] < 0.0
@@ -50,15 +50,16 @@ t, w_upwind = FiniteVolumes.run(model, grid, w₀, dt=dt, nb_time_steps=nb_time_
 t, w_minmod = FiniteVolumes.run(model, grid, w₀, dt=dt, nb_time_steps=nb_time_steps,
 								numerical_flux=Muscl(limiter=minmod, flag=mixed_cells, renormalize=renormalize))
 
-t, w_ultra = FiniteVolumes.run(model, grid, w₀, dt=dt, nb_time_steps=nb_time_steps,
-							   numerical_flux=Muscl(limiter=ultrabee(0.1), flag=mixed_cells, renormalize=renormalize))
+t, w_lagout = FiniteVolumes.run(model, grid, w₀, dt=dt, nb_time_steps=nb_time_steps,
+                                numerical_flux=LagoutiereDownwind(β=0.1))
 
+@assert all(sum.(w_lagout) .≈ 1.0)
 
 using Plots; gr()
 plot(
     plot(grid, w₀, (1, 2, 3)),
     plot(grid, w_upwind, (1, 2, 3)),
     plot(grid, w_minmod, (1, 2, 3)),
-    plot(grid, w_ultra, (1, 2, 3)),
+    plot(grid, w_lagout, (1, 2, 3)),
    )
 

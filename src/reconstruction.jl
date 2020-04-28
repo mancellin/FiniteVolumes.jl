@@ -92,23 +92,32 @@ function (s::LagoutiereDownwind)(grid, model::ScalarLinearAdvection{1, T, D}, w,
     return eltype(w)(v * α_flux)
 end
 
-#= function lagoutiere_downwind_flux(grid::FaceSplittedMesh{PeriodicRegularMesh2D}, =#
-#=                                   model::ScalarLinearAdvection{N, T, D}, =#
-#=                                   w, wsupp, i_face) where {N, T, D} =#
-#=     velocity, wst = upwind_stencil(grid, model, w, wsupp, i_face)[0, :] =#
-#=     bornesup = zeros(nb_vars(model)) =#
-#=     borneinf = zeros(nb_vars(model)) =#
-#=     for i in 1:nb_vars(model) =#
-#=         wi = get_component(wst, i) =#
-#=         borneinf[i], bornesup[i] = stability_range(wi, β) =#
-#=     end =#
-#=     for i in 1:nb_vars(model) =#
-#=         updated_borneinf = max(borneinf[i], 1.0 - sum(α_flux[j] for j in 1:(i-1)) - sum(bornesup[j] for j in (i+1):nb_vars(model))) =#
-#=         updated_bornesup = min(bornesup[i], 1.0 - sum(α_flux[j] for j in 1:(i-1)) - sum(borneinf[j] for j in (i+1):nb_vars(model))) =#
-#=         α_flux[i] = min(updated_bornesup, max(updated_borneinf, wi[1])) =#
-#=     end =#
-#=     ϕ = velocity*α_flux =#
-#=     return ϕ =#
-#= end =#
+function (s::LagoutiereDownwind)(grid, model::ScalarLinearAdvection{N, T, D}, w, wsupp, i_face) where {N, T, D}
+    if grid isa RegularMesh1D
+        v, wst = upwind_stencil(grid, model, w, wsupp, i_face)
+    else
+        v, wst2d = upwind_stencil(grid, model, w, wsupp, i_face)
+        wst = OffsetArray(SVector(wst2d[0, -1], wst2d[0, 0], wst2d[0, 1]), -1:1)
+    end
+
+    bornesup = @MVector zeros(nb_vars(model))
+    borneinf = @MVector zeros(nb_vars(model))
+    for i in 1:nb_vars(model)
+        wi = (x -> x[i]).(wst)
+        borneinf[i], bornesup[i] = stability_range(wi, s.β)
+    end
+
+    α_flux = @MVector zeros(nb_vars(model))
+    for i in 1:nb_vars(model)
+        sumα = i > 1 ? sum(α_flux[j] for j in 1:(i-1)) : 0.0
+        sumsup = i < nb_vars(model) ? sum(bornesup[j] for j in (i+1):nb_vars(model)) : 0.0
+        suminf = i < nb_vars(model) ? sum(borneinf[j] for j in (i+1):nb_vars(model)) : 0.0
+        updated_borneinf = max(borneinf[i], 1.0 - sumα - sumsup)
+        updated_bornesup = min(bornesup[i], 1.0 - sumα - suminf)
+        α_flux[i] = min(updated_bornesup, max(updated_borneinf, wst[1][i]))
+    end
+
+    return eltype(w)(v*α_flux)
+end
 
 
