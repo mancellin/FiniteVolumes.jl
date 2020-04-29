@@ -117,10 +117,13 @@ end
 
 # RUN
 
-function run!(models, mesh, w, t; nb_time_steps, dt=nothing, cfl=nothing, kwargs...)
+function run!(models, mesh, w, t; nb_time_steps, dt=nothing, cfl=nothing, verbose=true, kwargs...)
     wsupp = map(wi -> compute_wsupp(models[1], wi), w)
 
-    @showprogress 0.1 "Running " for i_time_step in 1:nb_time_steps
+	if verbose
+		p = Progress(nb_time_steps, dt=0.1)
+	end
+    for i_time_step in 1:nb_time_steps
 
         if isnothing(dt)
             if !isnothing(cfl)
@@ -135,9 +138,16 @@ function run!(models, mesh, w, t; nb_time_steps, dt=nothing, cfl=nothing, kwargs
                 v .-= dt * div(m, mesh, w, wsupp; kwargs...)
             end
         end
+		if verbose
+			update!(p, i_time_step)
+		end
 
         t += dt
     end
+	if verbose
+		update!(p, nb_time_steps)
+	end
+	
     return t
 end
 
