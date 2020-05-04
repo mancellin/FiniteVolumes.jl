@@ -52,10 +52,5 @@ using FiniteVolumes
         #= @test -g[1]/g[2] ≈ 2/3 =#
 
 
-        gridx, gridy = directional_splitting(grid)
-        @test FiniteVolumes.left_gradient(gridx, horizontal, 5) ≈ 0.0
-        @test FiniteVolumes.right_gradient(gridx, horizontal, 5) ≈ 0.0
-        @test FiniteVolumes.left_gradient(gridy, horizontal, 5) ≈ 1.5
-        @test FiniteVolumes.right_gradient(gridy, horizontal, 5) ≈ 1.5
     end
 end

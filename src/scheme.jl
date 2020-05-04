@@ -1,4 +1,4 @@
-using ProgressMeter: @showprogress
+using ProgressMeter: Progress, update!
 
 
 # NUMERICAL FLUX
