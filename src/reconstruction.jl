@@ -17,7 +17,7 @@ end
 #  Muscl  #
 ###########
 
-Base.@kwdef struct Muscl{L, F, R}
+Base.@kwdef struct Muscl{L, F, R} <: NumericalFlux
     limiter::L
     flag::F = all_cells
     renormalize::R = identity
@@ -49,7 +49,7 @@ end
 #  VOF  #
 #########
 
-Base.@kwdef struct VOF{M, F}
+Base.@kwdef struct VOF{M, F} <: NumericalFlux
     method::M
     flag::F = all_cells
     β::Float64
@@ -66,7 +66,7 @@ end
 #  LagoutiereDownwind  #
 ########################
 
-Base.@kwdef struct LagoutiereDownwind
+Base.@kwdef struct LagoutiereDownwind <: NumericalFlux
     β::Float64
 end
 

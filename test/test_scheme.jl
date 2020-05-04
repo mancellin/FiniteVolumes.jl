@@ -4,6 +4,9 @@ using StaticArrays
 
 @testset "Scalar upwind" begin
     flux = Upwind()
+
+    @test flux isa NumericalFlux
+
     grid = RegularMesh1D(0.0, 1.0, 2)
     from_left = ScalarLinearAdvection(1.0)
     from_right = ScalarLinearAdvection(-1.0)
@@ -54,6 +57,8 @@ end
     flux = Muscl(limiter=minmod, flag=all_cells)
     grid = RegularMesh1D(0.0, 1.0, 3)
 
+    @test flux isa NumericalFlux
+
     from_left = ScalarLinearAdvection(1.0)
     @test flux(grid, from_left, [0.0, 0.5, 1.0], [], 3) == 0.75
     @test flux(grid, from_left, [0.0, 0.0, 1.0], [], 3) == 0.0
@@ -74,6 +79,8 @@ end
 @testset "Scalar Lagoutiere" begin
     flux = LagoutiereDownwind(β=0.2)
     grid = RegularMesh1D(0.0, 1.0, 3)
+
+    @test flux isa NumericalFlux
 
     from_left = ScalarLinearAdvection(1.0)
     @test flux(grid, from_left, [0.0, 0.5, 1.0], [], 3) == 1.0

@@ -15,7 +15,7 @@ include("./mesh.jl")
 export RegularMesh1D, PeriodicRegularMesh2D, nb_dims, nb_cells, cell_center
 
 include("./scheme.jl")
-export Upwind
+export NumericalFlux, Upwind
 
 include("./reconstruction.jl")
 export Muscl, minmod, superbee, ultrabee, all_cells, no_cell

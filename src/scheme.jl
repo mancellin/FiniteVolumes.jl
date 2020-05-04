@@ -2,7 +2,10 @@ using ProgressMeter: Progress, update!
 
 
 # NUMERICAL FLUX
-struct Upwind end
+#
+abstract type NumericalFlux end
+
+struct Upwind <: NumericalFlux end
 
 function in_local_coordinates(f, grid, model, w, wsupp, i_face)
     i_cell_1, i_cell_2 = cells_next_to_inner_face(grid, i_face)
