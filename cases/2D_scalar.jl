@@ -18,9 +18,6 @@ w₀ = [is_in_disk(i) ? 1.0 : 0.0 for i in 1:nb_cells(grid)]
 
 t, w_upwind = FiniteVolumes.run(model, grid, w₀, dt=dt, nb_time_steps=nb_time_steps)
 
-const epsilon = 1e-5
-mixed_cells(wi) = epsilon <= wi[1] <= (1.0-epsilon)
-
 t, w_minmod = FiniteVolumes.run(model, grid, w₀, dt=dt, nb_time_steps=nb_time_steps,
 								numerical_flux=Muscl(limiter=minmod))
 

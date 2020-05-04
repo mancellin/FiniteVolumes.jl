@@ -54,7 +54,7 @@ end
 end
 
 @testset "Scalar muscl" begin
-    flux = Muscl(limiter=minmod, flag=all_cells)
+    flux = Muscl(limiter=minmod)
     grid = RegularMesh1D(0.0, 1.0, 3)
 
     @test flux isa NumericalFlux
@@ -71,8 +71,8 @@ end
 
     # Flagging no cells
     w = rand(3)
-    flux = Muscl(limiter=minmod, flag=no_cell)
-    @test flux(grid, from_left, w, [], 3) == Upwind()(grid, from_left, w, [[], [], []], 3)
+    flux = Either(no_cell, Muscl(limiter=minmod), Upwind())
+    @test flux(grid, from_left, w, [[], [], []], 3) == Upwind()(grid, from_left, w, [[], [], []], 3)
 end
 
 
