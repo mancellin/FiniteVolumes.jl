@@ -78,6 +78,15 @@ function div(model, mesh, w, wsupp; numerical_flux=Upwind(), boundary_flux=neuma
     return Δv
 end
 
+function div(model, mesh; kwargs...)
+    function divF(w, wsupp=nothing)
+        if wsupp == nothing
+            wsupp = [compute_wsupp(model, wi) for wi in w]
+        end
+        return div(model, mesh, w, wsupp; kwargs...)
+    end
+end
+
 function using_conservative_variables!(up!, model, w, wsupp)
     v = zeros(eltype(w), length(w))
     @inbounds for i_cell in 1:length(w)
