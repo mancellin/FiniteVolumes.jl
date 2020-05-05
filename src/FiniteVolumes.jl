@@ -12,7 +12,7 @@ include("./models/isothermal_two_fluid.jl")
 export IsothermalTwoFluidEuler
 
 include("./mesh.jl")
-export RegularMesh1D, PeriodicRegularMesh2D, nb_dims, nb_cells, cell_center
+export RegularMesh1D, RegularMesh2D, PeriodicRegularMesh2D, nb_dims, nb_cells, cell_center
 
 include("./scheme.jl")
 export NumericalFlux, Upwind

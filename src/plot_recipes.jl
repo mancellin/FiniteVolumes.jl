@@ -9,7 +9,7 @@ using ColorTypes
     x, data
 end
 
-@recipe function plot(grid::PeriodicRegularMesh2D, w, i::Int)
+@recipe function plot(grid::AbstractRegularMesh2D, w, i::Int)
     seriestype := :heatmap
     seriescolor --> :viridis
     aspect_ratio --> 1
@@ -21,7 +21,7 @@ end
     x, y, field
 end
 
-@recipe function plot(grid::PeriodicRegularMesh2D, w, is::Tuple{Int, Int, Int};
+@recipe function plot(grid::AbstractRegularMesh2D, w, is::Tuple{Int, Int, Int};
                       base_colors=(XYZ(1.0, 0.0, 0.2), XYZ(0.0, 1.0, 0.2), XYZ(0.0, 0.0, 0.0)))
     seriestype := :image
 
