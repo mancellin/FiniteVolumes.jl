@@ -17,7 +17,8 @@ function directional_splitting end
 # Default behavior: no supplementary variables
 nb_vars_supp(m::AbstractModel) = 0
 wsupp_names(m::AbstractModel) = Tuple([])
-compute_wsupp(m::AbstractModel, w) = SVector{0, Float64}()
+compute_wsupp(m::AbstractModel, w::Union{<:Number, <:SVector}) = SVector{0, Float64}()
+compute_wsupp(m::AbstractModel, w::Vector) = [compute_wsupp(m, wi) for wi in w]
 
 # Default behavior: conservative variables are the main variables
 compute_v(m::AbstractModel, w, wsupp) = w

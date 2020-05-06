@@ -100,7 +100,7 @@ end
 @inline get_pρuξ(m::IsothermalTwoFluidEuler{T, 1}, w, wsupp) where {T} = w[1], wsupp[1], w[2], w[3]
 @inline get_pρuξ(m::IsothermalTwoFluidEuler{T, 2}, w, wsupp) where {T} = w[1], wsupp[1], w[2], w[3], w[4]
 
-function compute_wsupp(m::IsothermalTwoFluidEuler, w) 
+function compute_wsupp(m::IsothermalTwoFluidEuler, w::Union{<:Number, <:SVector}) 
     p, ξ = get_pξ(m, w)
     return SVector(ρ(m, p, ξ), sqrt(c²(m, p, ξ)), dρdξ(m, p, ξ), α(m, p, ξ))
 end

@@ -130,7 +130,7 @@ end
 # RUN
 
 function run!(models, mesh, w, t; nb_time_steps, dt=nothing, cfl=nothing, verbose=true, kwargs...)
-    wsupp = map(wi -> compute_wsupp(models[1], wi), w)
+    wsupp = compute_wsupp(models[1], w)
 
 	if verbose
 		p = Progress(nb_time_steps, dt=0.1)
