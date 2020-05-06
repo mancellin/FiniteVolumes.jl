@@ -96,3 +96,29 @@ end
     @test flux(grid, from_left, w, [], 3) ≈ Muscl(limiter=ultrabee(0.2))(grid, from_left, w, [], 3)
     @test flux(grid, from_right, w, [], 2) ≈ Muscl(limiter=ultrabee(0.2))(grid, from_right, w, [], 2)
 end
+
+@testset "VOF flux" begin
+    grid = RegularMesh2D(3, 3)
+    top_left = ScalarLinearAdvection([1.0, 1.0])
+    bottom_right = ScalarLinearAdvection([-1.0, -1.0])
+    w = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    wsupp = FiniteVolumes.compute_wsupp(top_left, w)
+
+    upwind_flux = Upwind()
+    upwind_vof = VOF(method=(α, β) -> α[0, 0], β=0.2)
+    @test upwind_flux(grid, top_left, w, wsupp, 9) == upwind_vof(grid, top_left, w, wsupp, 9) == 0.5
+    @test upwind_flux(grid, top_left, w, wsupp, 10) == upwind_vof(grid, top_left, w, wsupp, 10) == 0.5
+    @test upwind_flux(grid, bottom_right, w, wsupp, 4) == upwind_vof(grid, bottom_right, w, wsupp, 4) == -0.5
+    @test upwind_flux(grid, bottom_right, w, wsupp, 7) == upwind_vof(grid, bottom_right, w, wsupp, 7) == -0.5
+
+    downwind_vof = VOF(method=(α, β) -> α[1, 0], β=0.2)
+    @test downwind_vof(grid, top_left, w, wsupp, 4) == 0.5
+    @test downwind_vof(grid, top_left, w, wsupp, 7) == 0.5
+    @test downwind_vof(grid, top_left, w, wsupp, 9) == 0.6
+    @test downwind_vof(grid, top_left, w, wsupp, 10) == 0.8 
+
+    @test downwind_vof(grid, bottom_right, w, wsupp, 4) == -0.2
+    @test downwind_vof(grid, bottom_right, w, wsupp, 7) == -0.4
+    @test downwind_vof(grid, bottom_right, w, wsupp, 9) == -0.5
+    @test downwind_vof(grid, bottom_right, w, wsupp, 10) == -0.5
+end

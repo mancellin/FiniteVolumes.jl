@@ -249,11 +249,10 @@ end
 
 function oriented_stencil(mesh::AbstractRegularMesh2D, i_cell, i_face)
     st = stencil(mesh, i_cell)
-    st = _transpose(st)
     if _is_horizontal(i_face) && i_cell == cells_next_to_inner_face(mesh, i_face)[1]
-        st = _rotl90(st)
-    elseif _is_horizontal(i_face) && i_cell == cells_next_to_inner_face(mesh, i_face)[2]
         st = _rotr90(st)
+    elseif _is_horizontal(i_face) && i_cell == cells_next_to_inner_face(mesh, i_face)[2]
+        st = _rotl90(st)
     elseif !_is_horizontal(i_face) && i_cell == cells_next_to_inner_face(mesh, i_face)[2]
         st = _rot180(st) 
     end
