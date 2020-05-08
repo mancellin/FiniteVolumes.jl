@@ -1,4 +1,8 @@
-function upwind_cell(model::ScalarLinearAdvection, mesh, w, i_face)
+################################################################################
+#                            Scalar reconstruction                             #
+################################################################################
+
+function upwind_cell(model::ScalarLinearAdvection, mesh, i_face)
     local_model = rotate_model(model, rotation_matrix(mesh, i_face))
     local_velocity = local_model.velocity[1]
     i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
@@ -6,22 +10,25 @@ function upwind_cell(model::ScalarLinearAdvection, mesh, w, i_face)
     return local_velocity, up_cell
 end
 
-function upwind_stencil(model::ScalarLinearAdvection, mesh, w, i_face)
-    local_velocity, up_cell = upwind_cell(model, mesh, w, i_face)
-    st = oriented_stencil(mesh, up_cell, i_face)
-    if ndims(st) == 1
-        wst = OffsetArray(@SVector [w[st[-1]], w[st[0]], w[st[1]]]
-                          , -1:1)
-    elseif ndims(st) == 2
+function upwind_stencil(model, mesh, w, i_face; max_stencil_dims=2)
+    u, i_cell = upwind_cell(model, mesh, i_face)
+    st = oriented_stencil(mesh, i_cell, i_face)
+    if nb_dims(mesh) == 1
+        Δx = dx(mesh)
+        wst = OffsetArray(SVector(w[st[-1]], w[st[0]], w[st[1]]), -1:1)
+    elseif nb_dims(mesh) == 2 && max_stencil_dims == 1
+        Δx = _is_horizontal(i_face) ? dy(mesh) : dx(mesh)
+        wst = OffsetArray(SVector(w[st[-1, 0]], w[st[0, 0]], w[st[1, 0]]), -1:1)
+    elseif nb_dims(mesh) == 2 && max_stencil_dims == 2
+        Δx = _is_horizontal(i_face) ? dy(mesh) : dx(mesh)
         wst = OffsetArray(
                           @SMatrix [w[st[-1, -1]] w[st[-1, 0]] w[st[-1, 1]];
                                     w[st[0, -1]]  w[st[0, 0]]  w[st[0, 1]];
                                     w[st[1, -1]]  w[st[1, 0]]  w[st[1, 1]]]
                           , -1:1, -1:1)
     end
-    return local_velocity, wst
+    return u, wst, Δx
 end
-
 
 ###########
 #  Muscl  #
@@ -34,22 +41,16 @@ Base.@kwdef struct Muscl{L, R} <: NumericalFlux
     renormalize::R = identity
 end
 
-minmod      = (a, b) -> a*b <= 0 ? 0.0 : (a >= 0 ? min(a, b) : max(a, b))
-superbee    = (a, b) -> a*b <= 0 ? 0.0 : (a >= 0 ? max(min(2*a, b), min(a, 2*b)) : min(max(2*a, b), max(a, 2*b)))
-ultrabee(β) = (a, b) -> a*b <= 0 ? 0.0 : (a >= 0 ? 2*max(0, min((1/β-1)*a, b)) : -ultrabee(β)(-a, -b))
+minmod(a, b, β) = a*b <= 0 ? 0.0 : (a >= 0 ? min(a, b) : max(a, b))
+superbee(a, b, β) = a*b <= 0 ? 0.0 : (a >= 0 ? max(min(2*a, b), min(a, 2*b)) : min(max(2*a, b), max(a, 2*b)))
+ultrabee(a, b, β) = a*b <= 0 ? 0.0 : (a >= 0 ? 2*max(0.0, min((1/β-1)*a, b)) : -ultrabee(-a, -b, β))
 
-
-function (s::Muscl)(model::ScalarLinearAdvection, mesh, w, i_face)
-    if mesh isa RegularMesh1D
-        v, wst = upwind_stencil(model, mesh, w, i_face)
-    else
-        v, wst2d = upwind_stencil(model, mesh, w, i_face)
-        wst = OffsetArray(SVector(wst2d[-1, 0], wst2d[0, 0], wst2d[1, 0]), -1:1)
-    end
-    grad_w::eltype(w) = s.limiter.(wst[0] - wst[-1], wst[1] - wst[0])
+function (s::Muscl)(model::ScalarLinearAdvection, mesh, w, i_face; dt=0.0)
+    u, wst, Δx = upwind_stencil(model, mesh, w, i_face, max_stencil_dims=1)
+    grad_w::eltype(w) = s.limiter.(wst[0] - wst[-1], wst[1] - wst[0], dt*u/Δx)
     re_w::eltype(w) = wst[0] .+ 0.5 * grad_w
     rere_w::eltype(w) = s.renormalize(re_w)
-    return eltype(w)(v * rere_w)
+    return eltype(w)(u * rere_w)
 end
 
 #########
@@ -58,13 +59,12 @@ end
 
 Base.@kwdef struct VOF{M} <: NumericalFlux
     method::M
-    β::Float64
 end
 
-function (s::VOF)(model::ScalarLinearAdvection, mesh, w, i_face)
-    v, wst = FiniteVolumes.upwind_stencil(model, mesh, w, i_face)
-    α_flux = s.method(wst, s.β)
-    return eltype(w)(v * α_flux)
+function (s::VOF)(model::ScalarLinearAdvection, mesh, w, i_face; dt=0.0)
+    u, wst, Δx = upwind_stencil(model, mesh, w, i_face, max_stencil_dims=2)
+    α_flux = s.method(wst, dt*u/Δx)
+    return eltype(w)(u * α_flux)
 end
 
 
@@ -72,9 +72,7 @@ end
 #  LagoutiereDownwind  #
 ########################
 
-Base.@kwdef struct LagoutiereDownwind <: NumericalFlux
-    β::Float64
-end
+struct LagoutiereDownwind <: NumericalFlux end
 
 function stability_range(α, β)
     maxi = max(α[-1], α[0])
@@ -86,44 +84,41 @@ end
 
 cut_in_range(inf, sup, x) = min(sup, max(inf, x))
 
-function (s::LagoutiereDownwind)(model::ScalarLinearAdvection{1, T, D}, mesh, w, i_face) where {T, D}
-    if mesh isa RegularMesh1D
-        v, wst = upwind_stencil(model, mesh, w, i_face)
+function (s::LagoutiereDownwind)(model::ScalarLinearAdvection{1, T, D}, mesh, w, i_face; dt=0.0) where {T, D}
+    u, wst, Δx = upwind_stencil(model, mesh, w, i_face, max_stencil_dims=1)
+    if abs(u) < 1e-10
+        return zero(eltype(w))
     else
-        v, wst2d = upwind_stencil(model, mesh, w, i_face)
-        wst = OffsetArray(SVector(wst2d[-1, 0], wst2d[0, 0], wst2d[1, 0]), -1:1)
+        borneinf, bornesup = stability_range(wst, dt*u/Δx)
+        α_flux = cut_in_range(borneinf, bornesup, wst[1])
+        return eltype(w)(u * α_flux)
     end
-    borneinf, bornesup = stability_range(wst, s.β)
-    α_flux = cut_in_range(borneinf, bornesup, wst[1])
-    return eltype(w)(v * α_flux)
 end
 
-function (s::LagoutiereDownwind)(model::ScalarLinearAdvection{N, T, D}, mesh, w, i_face) where {N, T, D}
-    if mesh isa RegularMesh1D
-        v, wst = upwind_stencil(model, mesh, w, i_face)
+function (s::LagoutiereDownwind)(model::ScalarLinearAdvection{N, T, D}, mesh, w, i_face; dt=0.0) where {N, T, D}
+    u, wst, Δx = upwind_stencil(model, mesh, w, i_face, max_stencil_dims=1)
+    if abs(u) < 1e-10
+        return zero(eltype(w))
     else
-        v, wst2d = upwind_stencil(model, mesh, w, i_face)
-        wst = OffsetArray(SVector(wst2d[-1, 0], wst2d[0, 0], wst2d[1, 0]), -1:1)
-    end
+        bornesup = @MVector zeros(nb_vars(model))
+        borneinf = @MVector zeros(nb_vars(model))
+        for i in 1:nb_vars(model)
+            wi = (x -> x[i]).(wst)
+            borneinf[i], bornesup[i] = stability_range(wi, dt*u/Δx)
+        end
 
-    bornesup = @MVector zeros(nb_vars(model))
-    borneinf = @MVector zeros(nb_vars(model))
-    for i in 1:nb_vars(model)
-        wi = (x -> x[i]).(wst)
-        borneinf[i], bornesup[i] = stability_range(wi, s.β)
-    end
+        α_flux = @MVector zeros(nb_vars(model))
+        for i in 1:nb_vars(model)
+            sumα = i > 1 ? sum(α_flux[j] for j in 1:(i-1)) : 0.0
+            sumsup = i < nb_vars(model) ? sum(bornesup[j] for j in (i+1):nb_vars(model)) : 0.0
+            suminf = i < nb_vars(model) ? sum(borneinf[j] for j in (i+1):nb_vars(model)) : 0.0
+            updated_borneinf = max(borneinf[i], 1.0 - sumα - sumsup)
+            updated_bornesup = min(bornesup[i], 1.0 - sumα - suminf)
+            α_flux[i] = min(updated_bornesup, max(updated_borneinf, wst[1][i]))
+        end
 
-    α_flux = @MVector zeros(nb_vars(model))
-    for i in 1:nb_vars(model)
-        sumα = i > 1 ? sum(α_flux[j] for j in 1:(i-1)) : 0.0
-        sumsup = i < nb_vars(model) ? sum(bornesup[j] for j in (i+1):nb_vars(model)) : 0.0
-        suminf = i < nb_vars(model) ? sum(borneinf[j] for j in (i+1):nb_vars(model)) : 0.0
-        updated_borneinf = max(borneinf[i], 1.0 - sumα - sumsup)
-        updated_bornesup = min(bornesup[i], 1.0 - sumα - suminf)
-        α_flux[i] = min(updated_bornesup, max(updated_borneinf, wst[1][i]))
+        return eltype(w)(u*α_flux)
     end
-
-    return eltype(w)(v*α_flux)
 end
 
 
@@ -140,11 +135,11 @@ struct Hybrid{C, F1, F2} <: NumericalFlux
     flux_false::F2
 end
 
-function (s::Hybrid)(args...)
-    if s.condition(args...)
-        s.flux_true(args...)
+function (s::Hybrid)(args...; kwargs...)
+    if s.condition(args...; kwargs...)
+        s.flux_true(args...; kwargs...)
     else
-        s.flux_false(args...)
+        s.flux_false(args...; kwargs...)
     end
 end
 

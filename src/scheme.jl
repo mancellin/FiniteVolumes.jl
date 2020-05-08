@@ -16,14 +16,14 @@ function in_local_coordinates(f, model, mesh, w, i_face)
     return rotate_flux(ϕ, model, transpose(rotation_matrix(mesh, i_face)))
 end
 
-function (::Upwind)(model::ScalarLinearAdvection, mesh, w, i_face)
+function (::Upwind)(model::ScalarLinearAdvection, mesh, w, i_face; kwargs...)
     in_local_coordinates(model, mesh, w, i_face) do local_model, w₁, w₂
         λ = local_model.velocity[1]
         return normal_flux(local_model, λ > 0 ? w₁ : w₂)
     end
 end
 
-function (::Upwind)(model, mesh, w, i_face)  # l-upwind FVCF
+function (::Upwind)(model, mesh, w, i_face; kwargs...)  # l-upwind FVCF
     in_local_coordinates(model, mesh, w, i_face) do local_model, w₁, w₂
         flux₁ = normal_flux(model, w₁)
         flux₂ = normal_flux(model, w₂)
@@ -52,7 +52,7 @@ function in_local_coordinates_at_boundary(f, model, mesh, w, i_face)
     return rotate_flux(ϕ, model, transpose(rotation_matrix(mesh, i_face)))
 end
 
-function neumann_bc(args...)
+function neumann_bc(args...; kwargs...)
     in_local_coordinates_at_boundary(args...) do local_model, w₁
         normal_flux(local_model, w₁)
     end
@@ -60,18 +60,18 @@ end
 
 
 # BALANCE
-function div(model, mesh, w; numerical_flux=Upwind(), boundary_flux=neumann_bc)
+function div(model, mesh, w; numerical_flux=Upwind(), boundary_flux=neumann_bc, dt=nothing)
     Δv = zeros(consvartype(model, w), nb_cells(mesh))
 
     @inbounds for i_face in inner_faces(mesh)
-        ϕ = numerical_flux(model, mesh, w, i_face)
+        ϕ = numerical_flux(model, mesh, w, i_face; dt=dt)
         i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
         Δv[i_cell_1] += ϕ * face_area(mesh, i_face) / cell_volume(mesh, i_cell_1)
         Δv[i_cell_2] -= ϕ * face_area(mesh, i_face) / cell_volume(mesh, i_cell_2)
     end
 
     @inbounds for i_face in boundary_faces(mesh)
-        ϕ = boundary_flux(model, mesh, w, i_face)
+        ϕ = boundary_flux(model, mesh, w, i_face; dt=dt)
         i_cell = cell_next_to_boundary_face(mesh, i_face)
         Δv[i_cell] += ϕ * face_area(mesh, i_face) / cell_volume(mesh, i_cell)
     end
@@ -145,7 +145,7 @@ function run!(models, mesh, w, t; nb_time_steps, dt=nothing, cfl=nothing, verbos
 
         for m in models
             using_conservative_variables!(m, w) do v
-                v .-= dt * div(m, mesh, w; kwargs...)
+                v .-= dt * div(m, mesh, w; dt=dt, kwargs...)
             end
         end
 

@@ -13,7 +13,7 @@ t_final, w_muscl = FiniteVolumes.run(model, grid, w₀, cfl=0.2, nb_time_steps=1
 									 numerical_flux=Muscl(limiter=minmod))
 
 t_final, w_ultra = FiniteVolumes.run(model, grid, w₀, cfl=0.2, nb_time_steps=100,
-									 numerical_flux=Muscl(limiter=ultrabee(0.2)))
+									 numerical_flux=Muscl(limiter=ultrabee))
 
 using Plots
 plot(grid, [w₀ w w_muscl w_ultra], 1, label=["initial" "upwind" "minmod" "ultrabee"])

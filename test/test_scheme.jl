@@ -80,24 +80,24 @@ end
 
 
 @testset "Scalar Lagoutiere" begin
-    flux = LagoutiereDownwind(β=0.2)
-    grid = RegularMesh1D(0.0, 1.0, 3)
+    flux = LagoutiereDownwind()
+    grid = RegularMesh1D(0.0, 3.0, 3)
 
     @test flux isa NumericalFlux
 
     from_left = ScalarLinearAdvection(1.0)
-    @test flux(from_left, grid, [0.0, 0.5, 1.0], 3) == 1.0
-    @test flux(from_left, grid, [0.0, 0.0, 1.0], 3) == 0.0
-    @test flux(from_left, grid, [0.0, 1.0, 1.0], 3) == 1.0
+    @test flux(from_left, grid, [0.0, 0.5, 1.0], 3, dt=0.2) == 1.0
+    @test flux(from_left, grid, [0.0, 0.0, 1.0], 3, dt=0.2) == 0.0
+    @test flux(from_left, grid, [0.0, 1.0, 1.0], 3, dt=0.2) == 1.0
 
     from_right = ScalarLinearAdvection(-1.0)
-    @test flux(from_right, grid, [0.0, 0.5, 1.0], 2) == 0.0
-    @test flux(from_right, grid, [0.0, 0.0, 1.0], 2) == 0.0
-    @test flux(from_right, grid, [0.0, 1.0, 1.0], 2) == -1.0
+    @test flux(from_right, grid, [0.0, 0.5, 1.0], 2, dt=0.2) == -0.5
+    @test flux(from_right, grid, [0.0, 0.0, 1.0], 2, dt=0.2) == 0.0
+    @test flux(from_right, grid, [0.0, 1.0, 1.0], 2, dt=0.2) == -1.0
 
-    w = rand(3)
-    @test flux(from_left, grid, w, 3) ≈ Muscl(limiter=ultrabee(0.2))(from_left, grid, w, 3)
-    @test flux(from_right, grid, w, 2) ≈ Muscl(limiter=ultrabee(0.2))(from_right, grid, w, 2)
+    w = [0.0, rand(1)[1], 1.0]
+    @test flux(from_left, grid, w, 3, dt=0.2) ≈ Muscl(limiter=ultrabee)(from_left, grid, w, 3, dt=0.2)
+    @test flux(from_right, grid, w, 2, dt=0.2) ≈ Muscl(limiter=ultrabee)(from_right, grid, w, 2, dt=0.2)
 end
 
 @testset "VOF flux" begin
@@ -107,13 +107,13 @@ end
     w = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
 
     upwind_flux = Upwind()
-    upwind_vof = VOF(method=(α, β) -> α[0, 0], β=0.2)
+    upwind_vof = VOF(method=(α, β) -> α[0, 0])
     @test upwind_flux(top_left, grid, w, 9) == upwind_vof(top_left, grid, w, 9) == 0.5
     @test upwind_flux(top_left, grid, w, 10) == upwind_vof(top_left, grid, w, 10) == 0.5
     @test upwind_flux(bottom_right, grid, w, 4) == upwind_vof(bottom_right, grid, w, 4) == -0.5
     @test upwind_flux(bottom_right, grid, w, 7) == upwind_vof(bottom_right, grid, w, 7) == -0.5
 
-    downwind_vof = VOF(method=(α, β) -> α[1, 0], β=0.2)
+    downwind_vof = VOF(method=(α, β) -> α[1, 0])
     @test downwind_vof(top_left, grid, w, 4) == 0.5
     @test downwind_vof(top_left, grid, w, 7) == 0.5
     @test downwind_vof(top_left, grid, w, 9) == 0.6

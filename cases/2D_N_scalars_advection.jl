@@ -48,7 +48,7 @@ t, w_minmod = FiniteVolumes.run(model, grid, w₀, dt=dt, nb_time_steps=nb_time_
                                 numerical_flux=Muscl(limiter=minmod, renormalize=renormalize))
 
 t, w_lagout = FiniteVolumes.run(model, grid, w₀, dt=dt, nb_time_steps=nb_time_steps,
-                                numerical_flux=LagoutiereDownwind(β=0.1))
+                                numerical_flux=LagoutiereDownwind())
 
 @assert all(sum.(w_lagout) .≈ 1.0)
 

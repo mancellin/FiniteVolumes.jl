@@ -21,10 +21,10 @@ t, w_minmod = FiniteVolumes.run(model, grid, w₀, dt=dt, nb_time_steps=nb_time_
 								numerical_flux=Muscl(limiter=minmod))
 
 t, w_ultra = FiniteVolumes.run(model, grid, w₀, dt=dt, nb_time_steps=nb_time_steps,
-							   numerical_flux=Muscl(limiter=ultrabee(0.2)))
+							   numerical_flux=Muscl(limiter=ultrabee))
 
 t, w_lagout = FiniteVolumes.run(model, grid, w₀, dt=dt, nb_time_steps=nb_time_steps,
-                                numerical_flux=LagoutiereDownwind(0.2))
+                                numerical_flux=LagoutiereDownwind())
 
 using Plots
 plot(
