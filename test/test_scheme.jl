@@ -16,6 +16,9 @@ using StaticArrays
     @test flux(grid, from_right, [1.0, 0.0], 2) == 0.0
     @test flux(grid, from_right, [0.0, 1.0], 2) == -1.0
 
+    @test flux(grid, from_left, [Scalar(1.0), Scalar(0.0)], 2) == Scalar(1.0)
+    @test flux(grid, from_right, [Scalar(1.0), Scalar(0.0)], 2) == Scalar(0.0)
+
     @test flux(grid, from_left, [SVector(1.0), SVector(0.0)], 2) == SVector(1.0)
     @test flux(grid, from_right, [SVector(1.0), SVector(0.0)], 2) == SVector(0.0)
 
