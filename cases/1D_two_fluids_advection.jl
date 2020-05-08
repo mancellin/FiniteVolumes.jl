@@ -3,7 +3,7 @@
 using FiniteVolumes
 
 grid = RegularMesh1D(0.0, 1.0, 100)
-model = IsothermalTwoFluidEuler{Float64, nb_dims(grid)}(300.0, 1.0, 1500.0, 1000.0, 1e5)
+model = IsothermalTwoFluidEuler{nb_dims(grid)}(300.0, 1.0, 1500.0, 1000.0, 1e5)
 
 w₀ = [full_state(model, p=1e5, u=10.0, ξ=
               0.2 < cell_center(grid, i)[1] < 0.5 ? 0.0 : 1.0
