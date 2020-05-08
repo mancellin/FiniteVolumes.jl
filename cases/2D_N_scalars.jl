@@ -41,7 +41,7 @@ nb_period = 2
 nb_time_steps = 2*ceil(Int, nb_period/dt)
 
 const epsilon = 1e-5
-mixed_cells(mesh, model, w, wsupp, i_face) = any(epsilon .<= w[FiniteVolumes.upwind_cell(grid, model, w, wsupp, i_face)[2]] .<= (1.0-epsilon))
+mixed_cells(mesh, model, w, i_face) = any(epsilon .<= w[FiniteVolumes.upwind_cell(grid, model, w, i_face)[2]] .<= (1.0-epsilon))
 
 renormalize(w) = w/(w[1] + w[2] + w[3])
 

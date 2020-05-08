@@ -17,20 +17,21 @@ function directional_splitting end
 # Default behavior: no supplementary variables
 nb_vars_supp(m::AbstractModel) = 0
 wsupp_names(m::AbstractModel) = Tuple([])
-compute_wsupp(m::AbstractModel, w::Union{<:Number, <:SVector}) = SVector{0, Float64}()
-compute_wsupp(m::AbstractModel, w::Vector) = [compute_wsupp(m, wi) for wi in w]
+compute_wsupp(m::AbstractModel, w::Union{<:Number, <:SVector}) = nothing
+compute_wsupp(m::AbstractModel, w::Vector) = foreach(wi -> compute_wsupp(m, wi), w)
 
 # Default behavior: conservative variables are the main variables
-compute_v(m::AbstractModel, w, wsupp) = w
+compute_v(m::AbstractModel, w) = w
 invert_v(m::AbstractModel, v) = v
 
 # Default behavior: invariant by rotation
 rotate_model(m::AbstractModel, rotation_matrix) = m
-rotate_state(w, wsupp, m::AbstractModel, rotation_matrix) = w, wsupp
+rotate_state(w, m::AbstractModel, rotation_matrix) = w
 rotate_flux(F, m::AbstractModel, rotation_matrix) = F
 
-function compute_w_int(m::AbstractModel, w_L, wsupp_L, w_R, wsupp_R)
+function compute_w_int(m::AbstractModel, w_L, w_R)
     w_mean = (w_L + w_R)/2
-    return w_mean, compute_wsupp(m, w_mean)
+    compute_wsupp(m, w_mean)
+    return w_mean
 end
 

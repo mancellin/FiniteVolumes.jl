@@ -34,11 +34,11 @@ w_names(m::ScalarLinearAdvection{N, D, T}) where {N, D, T} = Tuple(Symbol("α_$i
 
 rotate_model(m::ScalarLinearAdvection, rotation_matrix) = typeof(m)(rotation_matrix' * m.velocity)
 
-function normal_flux(m::ScalarLinearAdvection{N, D, T}, w, wsupp) where {N, D, T}
+function normal_flux(m::ScalarLinearAdvection{N, D, T}, w) where {N, D, T}
     return typeof(w)(w * m.velocity[1])
     # Only the first coordinate in the frame of the interface, i.e. the normal vector
 end
 
-eigenvalues(m::ScalarLinearAdvection{N, D, T}, w, wsupp) where {N, D, T} = @SVector fill(m.velocity[1], N)
-left_eigenvectors(m::ScalarLinearAdvection{N, D, T}, w, wsupp) where {N, D, T} = SMatrix{N, N, T}(I)
-right_eigenvectors(m::ScalarLinearAdvection{N, D, T}, w, wsupp) where {N, D, T} = SMatrix{N, N, T}(I)
+eigenvalues(m::ScalarLinearAdvection{N, D, T}, w) where {N, D, T} = @SVector fill(m.velocity[1], N)
+left_eigenvectors(m::ScalarLinearAdvection{N, D, T}, w) where {N, D, T} = SMatrix{N, N, T}(I)
+right_eigenvectors(m::ScalarLinearAdvection{N, D, T}, w) where {N, D, T} = SMatrix{N, N, T}(I)
