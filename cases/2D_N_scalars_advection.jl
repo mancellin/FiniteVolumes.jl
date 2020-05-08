@@ -40,19 +40,12 @@ dt = 0.004
 nb_period = 2
 nb_time_steps = 2*ceil(Int, nb_period/dt)
 
-const epsilon = 1e-5
-mixed_cells(mesh, model, w, i_face) = any(epsilon .<= w[FiniteVolumes.upwind_cell(grid, model, w, i_face)[2]] .<= (1.0-epsilon))
-
 renormalize(w) = w/(w[1] + w[2] + w[3])
 
 t, w_upwind = FiniteVolumes.run(model, grid, w₀, dt=dt, nb_time_steps=nb_time_steps)
 
 t, w_minmod = FiniteVolumes.run(model, grid, w₀, dt=dt, nb_time_steps=nb_time_steps,
-                                numerical_flux=Either(
-                                    mixed_cells,
-                                    Muscl(limiter=minmod, renormalize=renormalize),
-                                    Upwind()
-                                ))
+                                numerical_flux=Muscl(limiter=minmod, renormalize=renormalize))
 
 t, w_lagout = FiniteVolumes.run(model, grid, w₀, dt=dt, nb_time_steps=nb_time_steps,
                                 numerical_flux=LagoutiereDownwind(β=0.1))

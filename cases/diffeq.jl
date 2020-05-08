@@ -1,6 +1,5 @@
 #!/usr/bin/env julia
 
-using StaticArrays
 using FiniteVolumes
 using DifferentialEquations
 
@@ -10,12 +9,12 @@ model = ScalarLinearAdvection(1.0)
 w₀ = [i < nb_cells(mesh)/4 ? 1.0 : 0.0 for i in 1:nb_cells(mesh)]
 #= w₀ = [sin(2π*cell_center(mesh, i)[1]) for i in 1:nb_cells(mesh)] =#
 
-dwdt_upwind(w, p, t) = -div(model, mesh, numerical_flux=Upwind())(w)
+dwdt_upwind(w, p, t) = -FiniteVolumes.div(model, mesh, numerical_flux=Upwind())(w)
 prob = ODEProblem(dwdt_upwind, w₀, 0.4)
 sol1 = solve(prob, Euler(), dt=0.005, saveat=0.1)
 sol2 = solve(prob, RK4(), dt=0.005, adaptive=false, saveat=0.1)
 
-dwdt_muscl(w, p, t) = -div(model, mesh, numerical_flux=Muscl(limiter=minmod))(w)
+dwdt_muscl(w, p, t) = -FiniteVolumes.div(model, mesh, numerical_flux=Muscl(limiter=minmod))(w)
 prob = ODEProblem(dwdt_muscl, w₀, 0.4)
 sol3 = solve(prob, Euler(), dt=0.005, saveat=0.1)
 sol4 = solve(prob, RK4(), dt=0.005, adaptive=false, saveat=0.1)
