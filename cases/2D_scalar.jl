@@ -1,6 +1,5 @@
 #!/usr/bin/env julia
 
-using StaticArrays
 using LinearAlgebra: norm
 using FiniteVolumes
 
@@ -27,7 +26,7 @@ t, w_ultra = FiniteVolumes.run(model, grid, w₀, dt=dt, nb_time_steps=nb_time_s
 t, w_lagout = FiniteVolumes.run(model, grid, w₀, dt=dt, nb_time_steps=nb_time_steps,
                                 numerical_flux=LagoutiereDownwind(0.2))
 
-using Plots; pyplot()
+using Plots
 plot(
      plot(grid, w₀, 1, title="exact"),
      plot(grid, w_upwind, 1, title="upwind"),

@@ -1,6 +1,5 @@
 #!/usr/bin/env julia
 
-using StaticArrays
 using FiniteVolumes
 
 grid = RegularMesh1D(0.0, 1.0, 100)
