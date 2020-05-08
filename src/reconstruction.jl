@@ -128,19 +128,19 @@ end
 
 
 ############
-#  Either  #
+#  Hybrid  #
 ############
 
 all_cells(args...) = true
 no_cell(args...) = false
 
-struct Either{C, F1, F2} <: NumericalFlux
+struct Hybrid{C, F1, F2} <: NumericalFlux
     condition::C
     flux_true::F1
     flux_false::F2
 end
 
-function (s::Either)(args...)
+function (s::Hybrid)(args...)
     if s.condition(args...)
         s.flux_true(args...)
     else

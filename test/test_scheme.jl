@@ -74,7 +74,7 @@ end
 
     # Flagging no cells
     w = rand(3)
-    flux = Either(no_cell, Muscl(limiter=minmod), Upwind())
+    flux = Hybrid(no_cell, Muscl(limiter=minmod), Upwind())
     @test flux(from_left, grid, w, 3) == Upwind()(from_left, grid, w, 3)
 end
 
