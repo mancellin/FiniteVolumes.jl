@@ -11,11 +11,16 @@ end
 function upwind_stencil(grid, model::ScalarLinearAdvection, w, wsupp, i_face)
     local_velocity, up_cell = upwind_cell(grid, model, w, wsupp, i_face)
     st = oriented_stencil(grid, up_cell, i_face)
-    wst = OffsetArray(
-                      @SMatrix [w[st[-1, -1]] w[st[-1, 0]] w[st[-1, 1]];
-                                w[st[0, -1]]  w[st[0, 0]]  w[st[0, 1]];
-                                w[st[1, -1]]  w[st[1, 0]]  w[st[1, 1]]]
-                       , -1:1, -1:1)
+    if ndims(st) == 1
+        wst = OffsetArray(@SVector [w[st[-1]], w[st[0]], w[st[1]]]
+                          , -1:1)
+    elseif ndims(st) == 2
+        wst = OffsetArray(
+                          @SMatrix [w[st[-1, -1]] w[st[-1, 0]] w[st[-1, 1]];
+                                    w[st[0, -1]]  w[st[0, 0]]  w[st[0, 1]];
+                                    w[st[1, -1]]  w[st[1, 0]]  w[st[1, 1]]]
+                          , -1:1, -1:1)
+    end
     return local_velocity, wst
 end
 

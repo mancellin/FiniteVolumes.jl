@@ -41,12 +41,14 @@ function stencil(grid::RegularMesh1D, i_cell)
     return OffsetArray(stencil, -1:1)
 end
 
+_reverse(st) = OffsetArray(SVector{3, Int}(st[1], st[0], st[-1]), -1:1)
+
 function oriented_stencil(mesh::RegularMesh1D, i_cell, i_face)
     st = stencil(mesh, i_cell)
     if face_center_relative_to_cell(mesh, i_cell, i_face)' * rotation_matrix(mesh, i_face)[:, 1] > 0
         return st
     else
-        return reverse(st)
+        return _reverse(st)
     end
 end
 
