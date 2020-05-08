@@ -156,10 +156,6 @@ function run!(models, mesh, w, t; nb_time_steps, dt=nothing, cfl=nothing, verbos
         t += dt
     end
 
-	if verbose
-		update!(p, nb_time_steps)
-	end
-	
     return t
 end
 
