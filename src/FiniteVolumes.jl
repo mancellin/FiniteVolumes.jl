@@ -9,7 +9,7 @@ include("./models/scalar_linear_advection.jl")
 export ScalarLinearAdvection
 
 include("./models/isothermal_two_fluid.jl")
-export IsothermalTwoFluidEuler
+export IsothermalTwoFluidEuler, full_state
 
 include("./mesh.jl")
 export RegularMesh1D, RegularMesh2D, PeriodicRegularMesh2D, nb_dims, nb_cells, cell_center

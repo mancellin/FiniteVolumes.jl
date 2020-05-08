@@ -61,7 +61,7 @@ end
 
 # BALANCE
 function div(model, mesh, w; numerical_flux=Upwind(), boundary_flux=neumann_bc)
-    Δv = zeros(eltype(w), nb_cells(mesh))
+    Δv = zeros(consvartype(model, w), nb_cells(mesh))
 
     @inbounds for i_face in inner_faces(mesh)
         ϕ = numerical_flux(mesh, model, w, i_face)
@@ -85,7 +85,7 @@ function div(model, mesh; kwargs...)
 end
 
 function using_conservative_variables!(up!, model, w)
-    v = zeros(eltype(w), length(w))
+    v = zeros(consvartype(model, w), length(w))
     @inbounds for i_cell in 1:length(w)
         v[i_cell] = compute_v(model, w[i_cell])
     end

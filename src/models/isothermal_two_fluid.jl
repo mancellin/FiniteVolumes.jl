@@ -23,12 +23,7 @@ end
 Base.eltype(m::IsothermalTwoFluidEuler{T, D}) where {T, D} = T
 nb_dims(m::IsothermalTwoFluidEuler{T, D}) where {T, D} = D
 nb_vars(m::IsothermalTwoFluidEuler{T, D}) where {T, D} = 2 + D
-nb_vars_supp(m::IsothermalTwoFluidEuler) = 4
-
-w_names(m::IsothermalTwoFluidEuler{T, 1}) where T = (:p, :u, :ξ)
-w_names(m::IsothermalTwoFluidEuler{T, 2}) where T = (:p, :ux, :uy, :ξ)
-wsupp_names(m::IsothermalTwoFluidEuler{T, 1}) where T = (:ρ, :c, :dρdξ, :α)
-wsupp_names(m::IsothermalTwoFluidEuler{T, 2}) where T = (:ρ, :c, :dρdξ, :α)
+consvartype(m::IsothermalTwoFluidEuler{T, D}, w) where {T, D} = SVector{2 + D, T}
 
 # EOS
 ρ₁(m::IsothermalTwoFluidEuler, p) = m.ρ₁₀ + (p - m.p₀)/m.c₁^2
@@ -96,97 +91,97 @@ end
 
 ########################################
 
-@inline get_pξ(m::IsothermalTwoFluidEuler{T, D}, w) where {T, D} = w[1], w[2+D]
-@inline get_pρuξ(m::IsothermalTwoFluidEuler{T, 1}, w, wsupp) where {T} = w[1], wsupp[1], w[2], w[3]
-@inline get_pρuξ(m::IsothermalTwoFluidEuler{T, 2}, w, wsupp) where {T} = w[1], wsupp[1], w[2], w[3], w[4]
-
-function compute_wsupp(m::IsothermalTwoFluidEuler, w::Union{<:Number, <:SVector}) 
-    p, ξ = get_pξ(m, w)
-    return SVector(ρ(m, p, ξ), sqrt(c²(m, p, ξ)), dρdξ(m, p, ξ), α(m, p, ξ))
-end
-
 ########
 #  1D  #
 ########
 
-function rotate_state(w, wsupp, m::IsothermalTwoFluidEuler{T, 1}, rotation_matrix) where T
-    w = @SVector [w[1], w[2] * rotation_matrix[1, 1], w[3]]
-    return w, wsupp
+w_names(m::IsothermalTwoFluidEuler{T, 1}) where T = (:p, :u, :ξ, :ρ, :c, :dρdξ, :α)
+
+full_state(m::IsothermalTwoFluidEuler{T, 1}; p, u, ξ) where T = full_state(m, p, u, ξ)
+
+function full_state(m::IsothermalTwoFluidEuler{T, 1}, p, u, ξ) where T
+    return (p=p, u=u, ξ=ξ,
+            ρ=ρ(m, p, ξ), c=sqrt(c²(m, p, ξ)), dρdξ=dρdξ(m, p, ξ), α=α(m, p, ξ))
 end
 
-function compute_v(m::IsothermalTwoFluidEuler{T, 1}, w, wsupp) where T
-    p, ρ, u, ξ = get_pρuξ(m, w, wsupp)
-    return SVector{3, T}(ρ, ρ*u, ρ*ξ)
+function rotate_state(w, m::IsothermalTwoFluidEuler{T, 1}, rotation_matrix) where T
+    return (p=w.p, u=w.u * rotation_matrix[1, 1], ξ=w.ξ, ρ=w.ρ, c=w.c, dρdξ=w.dρdξ, α=w.α)
+end
+
+function compute_v(m::IsothermalTwoFluidEuler{T, 1}, w) where T
+    ρ, u, ξ = w.ρ, w.u, w.ξ
+    return SVector{3, eltype(m)}(ρ, ρ*u, ρ*ξ)
 end
 
 function invert_v(m::IsothermalTwoFluidEuler{T, 1}, v) where T
     u = v[2]/v[1]
     ξ = v[3]/v[1]
-    return SVector{3, T}(invert_p_exact(m, v[1], ξ), u, ξ)
+    p = invert_p_exact(m, v[1], ξ)
+    return full_state(m, p, u, ξ)
 end
 
-function compute_w_int(m::IsothermalTwoFluidEuler{T, 1}, w_L, wsupp_L, w_R, wsupp_R) where T
-    p_L, ρ_L, ux_L, ξ_L = get_pρuξ(m, w_L, wsupp_L)
-    p_R, ρ_R, ux_R, ξ_R = get_pρuξ(m, w_R, wsupp_R)
-    c_L = wsupp_L[2]
-    c_R = wsupp_R[2]
+function compute_w_int(m::IsothermalTwoFluidEuler{T, 1}, w_L, w_R) where T
+    p_L, ux_L, ξ_L, ρ_L, c_L = w_L.p, w_L.u, w_L.ξ, w_L.ρ, w_L.c
+    p_R, ux_R, ξ_R, ρ_R, c_R = w_R.p, w_R.u, w_R.ξ, w_R.ρ, w_R.c
 
-    w_int = @SVector [
-                      # p_int
-                      ((ρ_L*c_L*p_L + ρ_R*c_R*p_R + ρ_L*c_L*ρ_R*c_R*(ux_L - ux_R))
-                       /(ρ_L*c_L + ρ_R*c_R)),
-                      # u_int
-                      ((ρ_L*c_L*ux_L + ρ_R*c_R*ux_R + (p_L - p_R))
-                       /(ρ_L*c_L + ρ_R*c_R)),
-                      # ξ_int
-                      (ξ_L + ξ_R)/2
-                     ]
-
-    return w_int, compute_wsupp(m, w_int)
+    p_int = ((ρ_L*c_L*p_L + ρ_R*c_R*p_R + ρ_L*c_L*ρ_R*c_R*(ux_L - ux_R))/(ρ_L*c_L + ρ_R*c_R))
+    u_int = ((ρ_L*c_L*ux_L + ρ_R*c_R*ux_R + (p_L - p_R))/(ρ_L*c_L + ρ_R*c_R))
+    ξ_int = (ξ_L + ξ_R)/2
+    return full_state(m, p_int, u_int, ξ_int)
 end
 
-function normal_flux(m::IsothermalTwoFluidEuler{T, 1}, w, wsupp) where T
-    p, ρ, ux, ξ = get_pρuξ(m, w, wsupp)
-    return SVector(ρ*ux, ρ*ux^2 + p, ρ*ξ*ux)
+function normal_flux(m::IsothermalTwoFluidEuler{T, 1}, w) where T
+    ρ, u, ξ, p = w.ρ, w.u, w.ξ, w.p
+    return SVector(ρ*u, ρ*u^2 + p, ρ*ξ*u)
 end
 
 function rotate_flux(F, m::IsothermalTwoFluidEuler{T, 1}, rotation_matrix) where T
-    @SVector [F[1], F[2] * rotation_matrix[1, 1], F[3]]
+    SVector{3, T}(F[1], F[2] * rotation_matrix[1, 1], F[3])
 end
 
-function eigenvalues(m::IsothermalTwoFluidEuler{T, 1} , w, wsupp) where T
-    u, c = w[2], wsupp[2]
+function eigenvalues(m::IsothermalTwoFluidEuler{T, 1}, w) where T
+    u, c = w.u, w.c
     return SVector{3, T}(u-c, u, u+c)
 end
 
-function left_eigenvectors(m::IsothermalTwoFluidEuler{T, 1}, w, wsupp) where T
-    p, ρ, u, ξ = get_pρuξ(m, w, wsupp)
-    c, dρdξ = wsupp[2], wsupp[3]
+function left_eigenvectors(m::IsothermalTwoFluidEuler{T, 1}, w) where T
+    ρ, u, ξ, p = w.ρ, w.u, w.ξ, w.p
+    c, dρdξ = w.c, w.dρdξ
     return @SMatrix [dρdξ*ξ/ρ + u/c + 1.0  -1.0/c  -dρdξ/ρ;
                      -ξ  0  1;
                      dρdξ*ξ/ρ - u/c + 1.0  1.0/c  -dρdξ/ρ]
 end
 
-function right_eigenvectors(m::IsothermalTwoFluidEuler{T, 1}, w, wsupp) where T
-    p, ρ, u, ξ = get_pρuξ(m, w, wsupp)
-    c, dρdξ = wsupp[2], wsupp[3]
-    return @SMatrix [0.5  dρdξ/ρ 0.5;(u - c)/2 u*dρdξ/ρ (c + u)/2;ξ/2 (ξ*dρdξ/ρ + 1.0) ξ/2]
+function right_eigenvectors(m::IsothermalTwoFluidEuler{T, 1}, w) where T
+    ρ, u, ξ, p = w.ρ, w.u, w.ξ, w.p
+    c, dρdξ = w.c, w.dρdξ
+    return @SMatrix [0.5  dρdξ/ρ 0.5;
+                     (u - c)/2 u*dρdξ/ρ (c + u)/2;
+                     ξ/2 (ξ*dρdξ/ρ + 1.0) ξ/2]
 end
 
 ########
 #  2D  #
 ########
 
-function rotate_state(w, wsupp, m::IsothermalTwoFluidEuler{T, 2}, rotation_matrix) where T
-    w = @SVector [w[1],
-                  rotation_matrix[1, 1] * w[2] + rotation_matrix[1, 2] * w[3],
-                  rotation_matrix[2, 1] * w[2] + rotation_matrix[2, 2] * w[3],
-                  w[4]]
-    return w, wsupp
+w_names(m::IsothermalTwoFluidEuler{T, 2}) where T = (:p, :ux, :uy, :ξ, :ρ, :c, :dρdξ, :α)
+
+full_state(m::IsothermalTwoFluidEuler{T, 2}; p, ux, uy, ξ) where T = full_state(m, p, ux, uy, ξ)
+
+function full_state(m::IsothermalTwoFluidEuler{T, 2}, p, ux, uy, ξ) where T
+    return (p=p, ux=ux, uy=uy, ξ=ξ,
+            ρ=ρ(m, p, ξ), c=sqrt(c²(m, p, ξ)), dρdξ=dρdξ(m, p, ξ), α=α(m, p, ξ))
 end
 
-function compute_v(m::IsothermalTwoFluidEuler{T, 2}, w, wsupp) where T
-    p, ρ, ux, uy, ξ = get_pρuξ(m, w, wsupp)
+function rotate_state(w, m::IsothermalTwoFluidEuler{T, 2}, rotation_matrix) where T
+    return (p=w.p,
+            ux=rotation_matrix[1, 1] * w[2] + rotation_matrix[1, 2] * w[3],
+            uy=rotation_matrix[2, 1] * w[2] + rotation_matrix[2, 2] * w[3],
+            ξ=w.ξ, ρ=w.ρ, c=w.c, dρdξ=w.dρdξ, α=w.α)
+end
+
+function compute_v(m::IsothermalTwoFluidEuler{T, 2}, w) where T
+    ρ, ux, uy, ξ = w.ρ, w.ux, w.uy, w.ξ
     return SVector{4, T}(ρ, ρ*ux, ρ*uy, ρ*ξ)
 end
 
@@ -194,61 +189,51 @@ function invert_v(m::IsothermalTwoFluidEuler{T, 2}, v) where T
     ux = v[2]/v[1]
     uy = v[3]/v[1]
     ξ = v[4]/v[1]
-    return SVector{4, T}(invert_p_exact(m, v[1], ξ), ux, uy, ξ)
+    p = invert_p_exact(m, v[1], ξ)
+    return full_state(m, p, ux, uy, ξ)
 end
 
-function compute_w_int(m::IsothermalTwoFluidEuler{T, 2}, w_L, wsupp_L, w_R, wsupp_R) where T
-    p_L, ρ_L, ux_L, uy_L, ξ_L = get_pρuξ(m, w_L, wsupp_L)
-    p_R, ρ_R, ux_R, uy_R, ξ_R = get_pρuξ(m, w_R, wsupp_R)
-    c_L = wsupp_L[2]
-    c_R = wsupp_R[2]
+function compute_w_int(m::IsothermalTwoFluidEuler{T, 2}, w_L, w_R) where T
+    p_L, ux_L, uy_L, ξ_L, ρ_L, c_L = w_L.p, w_L.ux, w_L.uy, w_L.ξ, w_L.ρ, w_L.c
+    p_R, ux_R, uy_R, ξ_R, ρ_R, c_R = w_R.p, w_R.ux, w_R.uy, w_R.ξ, w_R.ρ, w_R.c
 
-    w_int = @SVector [
-                      # p_int
-                      ((ρ_L*c_L*p_L + ρ_R*c_R*p_R + ρ_L*c_L*ρ_R*c_R*(ux_L - ux_R))
-                       /(ρ_L*c_L + ρ_R*c_R)),
-                      # ux_int
-                      ((ρ_L*c_L*ux_L + ρ_R*c_R*ux_R + (p_L - p_R))
-                       /(ρ_L*c_L + ρ_R*c_R)),
-                      # uy_int
-                      (uy_L + uy_R)/2,
-                      # ξ_int
-                      (ξ_L + ξ_R)/2
-                     ]
-
-    return w_int, compute_wsupp(m, w_int)
+    p_int = ((ρ_L*c_L*p_L + ρ_R*c_R*p_R + ρ_L*c_L*ρ_R*c_R*(ux_L - ux_R))/(ρ_L*c_L + ρ_R*c_R))
+    ux_int = ((ρ_L*c_L*ux_L + ρ_R*c_R*ux_R + (p_L - p_R))/(ρ_L*c_L + ρ_R*c_R))
+    uy_int = (uy_L + uy_R)/2
+    ξ_int = (ξ_L + ξ_R)/2
+    return full_state(m, p_int, ux_int, uy_int, ξ_int)
 end
 
-function normal_flux(m::IsothermalTwoFluidEuler{T, 2}, w, wsupp) where T
-    p, ρ, ux, uy, ξ = get_pρuξ(m, w, wsupp)
-    return SVector(ρ*ux, ρ*ux^2 + p, ρ*ux*uy, ρ*ξ*ux)
+function normal_flux(m::IsothermalTwoFluidEuler{T, 2}, w) where T
+    ρ, ux, uy, ξ, p = w.ρ, w.ux, w.uy, w.ξ, w.p
+    return SVector{4, T}(ρ*ux, ρ*ux^2 + p, ρ*ux*uy, ρ*ξ*ux)
 end
 
 function rotate_flux(F, m::IsothermalTwoFluidEuler{T, 2}, rotation_matrix) where T
-    @SVector [F[1], 
-              rotation_matrix[1, 1] * F[2] + rotation_matrix[1, 2] * F[3],
-              rotation_matrix[2, 1] * F[2] + rotation_matrix[2, 2] * F[3],
-              F[4]
-             ]
+    SVector{4, T}(F[1], 
+                  rotation_matrix[1, 1] * F[2] + rotation_matrix[1, 2] * F[3],
+                  rotation_matrix[2, 1] * F[2] + rotation_matrix[2, 2] * F[3],
+                  F[4]
+                 )
 end
 
-function eigenvalues(m::IsothermalTwoFluidEuler{T, 2} , w, wsupp) where T
-    u, c = w[2], wsupp[2]
+function eigenvalues(m::IsothermalTwoFluidEuler{T, 2}, w) where T
+    u, c = w.ux, w.c
     return SVector{4, T}(u-c, u, u, u+c)
 end
 
-function left_eigenvectors(m::IsothermalTwoFluidEuler{T, 2}, w, wsupp) where T
-    p, ρ, ux, uy, ξ = get_pρuξ(m, w, wsupp)
-    c, dρdξ = wsupp[2], wsupp[3]
+function left_eigenvectors(m::IsothermalTwoFluidEuler{T, 2}, w) where T
+    ρ, ux, uy, ξ, p = w.ρ, w.ux, w.uy, w.ξ, w.p
+    c, dρdξ = w.c, w.dρdξ
     @SMatrix [dρdξ*ξ/ρ+ux/c+1.0  -1.0/c  0.0  -dρdξ/ρ;
               -uy                 0.0    1.0   0.0;
               -ξ                  0.0    0.0   1.0;
               dρdξ*ξ/ρ-ux/c+1.0   1.0/c  0.0  -dρdξ/ρ]
 end
 
-function right_eigenvectors(m::IsothermalTwoFluidEuler{T, 2}, w, wsupp) where T
-    p, ρ, ux, uy, ξ = get_pρuξ(m, w, wsupp)
-    c, dρdξ = wsupp[2], wsupp[3]
+function right_eigenvectors(m::IsothermalTwoFluidEuler{T, 2}, w) where T
+    ρ, ux, uy, ξ, p = w.ρ, w.ux, w.uy, w.ξ, w.p
+    c, dρdξ = w.c, w.dρdξ
     @SMatrix [0.5      0.0  dρdξ/ρ       0.5;
               (ux-c)/2 0.0  ux*dρdξ/ρ    (c+ux)/2;
               uy/2     1.0  uy*dρdξ/ρ    uy/2;

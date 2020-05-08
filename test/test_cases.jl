@@ -47,13 +47,13 @@ end
     @testset "One-fluid shock tubes" begin
         mesh = RegularMesh1D(0.0, 1.0, 100)
         model = IsothermalTwoFluidEuler{1}(1.0, 1.0, 5.0, 1000.0, 1.0)
-        w₀ = riemann_problem(mesh, SVector(2.0, 0.0, 1.0), SVector(1.0, 0.0, 1.0))
+        w₀ = riemann_problem(mesh, full_state(model, p=2.0, u=0.0, ξ=1.0), full_state(model, p=1.0, u=0.0, ξ=1.0))
         t, w = FiniteVolumes.run(model, mesh, w₀, cfl=0.8, nb_time_steps=20)
         @test isapprox(w[50][1], 1.41, rtol=1e-2)
         @test isapprox(w[50][2], 0.347, rtol=1e-2)
         @test isapprox(w[50][3], 1.0, rtol=1e-2)
 
-        w₀ = riemann_problem(mesh, SVector(2.0, 0.0, 0.0), SVector(1.0, 0.0, 0.0))
+        w₀ = riemann_problem(mesh, full_state(model, p=2.0, u=0.0, ξ=0.0), full_state(model, p=1.0, u=0.0, ξ=0.0))
         t, w = FiniteVolumes.run(model, mesh, w₀, cfl=0.8, nb_time_steps=20)
         @test isapprox(w[50][1], 1.5, rtol=1e-2)
         @test isapprox(w[50][2], 1e-4, rtol=1e-2)
