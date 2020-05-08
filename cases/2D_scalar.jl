@@ -7,13 +7,13 @@ grid = PeriodicRegularMesh2D(50, 50)
 model = directional_splitting(ScalarLinearAdvection([1.0, 1.0]))
 
 is_in_disk(i) = norm([0.5, 0.5] - cell_center(grid, i)) < 0.3
-is_in_square(i, a=0.5) = 0.5-a/2 <= cell_center(grid, i)[1] <= 0.5+a/2 && 0.5-a/2 <= cell_center(grid, i)[2] <= 0.5+a/2
+is_in_square(i, a=0.5) = all(0.5-a/2 .<= cell_center(grid, i) .<= 0.5+a/2)
 
 dt = 0.004
 nb_period = 1.0
 nb_time_steps = ceil(Int, nb_period/dt)
 
-w₀ = [is_in_disk(i) ? 1.0 : 0.0 for i in 1:nb_cells(grid)]
+w₀ = [is_in_square(i) ? 1.0 : 0.0 for i in 1:nb_cells(grid)]
 
 t, w_upwind = FiniteVolumes.run(model, grid, w₀, dt=dt, nb_time_steps=nb_time_steps)
 
