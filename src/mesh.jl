@@ -163,12 +163,12 @@ _top_right_corner(grid::AbstractRegularMesh2D, i_cell) = cell_center(grid, i_cel
  
 using PolygonArea
 _cell_as_polygon(grid::AbstractRegularMesh2D, i_cell) = rectangle(_bottom_left_corner(grid, i_cell)...,
-                                                                 _top_right_corner(grid, i_cell)...)
+                                                                  _top_right_corner(grid, i_cell)...)
 
 function integrate(poly::PolygonArea.ConvexPolygon, grid::AbstractRegularMesh2D)
-    α = zeros(SVector{1, Float64}, nb_cells(grid))
+    α = zeros(Float64, nb_cells(grid))
     for i_cell in 1:nb_cells(grid)
-        α[i_cell] = @SVector [area(poly ∩ _cell_as_polygon(grid, i_cell))/cell_volume(grid, i_cell)]
+        α[i_cell] = area(poly ∩ _cell_as_polygon(grid, i_cell))/cell_volume(grid, i_cell)
     end
     return α
 end
