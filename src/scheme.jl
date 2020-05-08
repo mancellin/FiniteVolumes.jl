@@ -7,24 +7,24 @@ abstract type NumericalFlux end
 
 struct Upwind <: NumericalFlux end
 
-function in_local_coordinates(f, grid, model, w, i_face)
-    i_cell_1, i_cell_2 = cells_next_to_inner_face(grid, i_face)
-    w₁ = rotate_state(w[i_cell_1], model, rotation_matrix(grid, i_face))
-    w₂ = rotate_state(w[i_cell_2], model, rotation_matrix(grid, i_face))
-    local_model = rotate_model(model, rotation_matrix(grid, i_face))
+function in_local_coordinates(f, model, mesh, w, i_face)
+    i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
+    w₁ = rotate_state(w[i_cell_1], model, rotation_matrix(mesh, i_face))
+    w₂ = rotate_state(w[i_cell_2], model, rotation_matrix(mesh, i_face))
+    local_model = rotate_model(model, rotation_matrix(mesh, i_face))
     ϕ = f(local_model, w₁, w₂)
-    return rotate_flux(ϕ, model, transpose(rotation_matrix(grid, i_face)))
+    return rotate_flux(ϕ, model, transpose(rotation_matrix(mesh, i_face)))
 end
 
-function (::Upwind)(mesh, model::ScalarLinearAdvection, w, i_face)
-    in_local_coordinates(mesh, model, w, i_face) do local_model, w₁, w₂
+function (::Upwind)(model::ScalarLinearAdvection, mesh, w, i_face)
+    in_local_coordinates(model, mesh, w, i_face) do local_model, w₁, w₂
         λ = local_model.velocity[1]
         return normal_flux(local_model, λ > 0 ? w₁ : w₂)
     end
 end
 
-function (::Upwind)(mesh, model, w, i_face)  # l-upwind FVCF
-    in_local_coordinates(mesh, model, w, i_face) do local_model, w₁, w₂
+function (::Upwind)(model, mesh, w, i_face)  # l-upwind FVCF
+    in_local_coordinates(model, mesh, w, i_face) do local_model, w₁, w₂
         flux₁ = normal_flux(model, w₁)
         flux₂ = normal_flux(model, w₂)
 
@@ -44,12 +44,12 @@ end
 
 
 # BOUNDARY FLUX
-function in_local_coordinates_at_boundary(f, grid, model, w, i_face)
-    i_cell_1 = cell_next_to_boundary_face(grid, i_face)
-    w₁ = rotate_state(w[i_cell_1], model, rotation_matrix(grid, i_face))
-    local_model = rotate_model(model, rotation_matrix(grid, i_face))
+function in_local_coordinates_at_boundary(f, model, mesh, w, i_face)
+    i_cell_1 = cell_next_to_boundary_face(mesh, i_face)
+    w₁ = rotate_state(w[i_cell_1], model, rotation_matrix(mesh, i_face))
+    local_model = rotate_model(model, rotation_matrix(mesh, i_face))
     ϕ = f(local_model, w₁)
-    return rotate_flux(ϕ, model, transpose(rotation_matrix(grid, i_face)))
+    return rotate_flux(ϕ, model, transpose(rotation_matrix(mesh, i_face)))
 end
 
 function neumann_bc(args...)
@@ -64,14 +64,14 @@ function div(model, mesh, w; numerical_flux=Upwind(), boundary_flux=neumann_bc)
     Δv = zeros(consvartype(model, w), nb_cells(mesh))
 
     @inbounds for i_face in inner_faces(mesh)
-        ϕ = numerical_flux(mesh, model, w, i_face)
+        ϕ = numerical_flux(model, mesh, w, i_face)
         i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
         Δv[i_cell_1] += ϕ * face_area(mesh, i_face) / cell_volume(mesh, i_cell_1)
         Δv[i_cell_2] -= ϕ * face_area(mesh, i_face) / cell_volume(mesh, i_cell_2)
     end
 
     @inbounds for i_face in boundary_faces(mesh)
-        ϕ = boundary_flux(mesh, model, w, i_face)
+        ϕ = boundary_flux(model, mesh, w, i_face)
         i_cell = cell_next_to_boundary_face(mesh, i_face)
         Δv[i_cell] += ϕ * face_area(mesh, i_face) / cell_volume(mesh, i_cell)
     end
@@ -98,7 +98,7 @@ end
 
 # COURANT
 
-function courant(Δt, mesh, model::AbstractModel, w)
+function courant(Δt, model::AbstractModel, mesh, w)
     courant = 0.0
     for i_face in inner_faces(mesh)
         i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
@@ -113,11 +113,11 @@ function courant(Δt, mesh, model::AbstractModel, w)
     return courant
 end
 
-function courant(Δt, mesh::RegularMesh1D, model::ScalarLinearAdvection, w)
+function courant(Δt, model::ScalarLinearAdvection, mesh::RegularMesh1D, w)
     return abs(model.velocity[1]) * Δt / dx(mesh)
 end
 
-function courant(Δt, mesh::PeriodicRegularMesh2D, model::ScalarLinearAdvection, w)
+function courant(Δt, model::ScalarLinearAdvection, mesh::PeriodicRegularMesh2D, w)
     vx, vy = model.velocity
     return max(abs(vx) * Δt / dx(mesh), abs(vy) * Δt / dy(mesh))
 end
@@ -137,7 +137,7 @@ function run!(models, mesh, w, t; nb_time_steps, dt=nothing, cfl=nothing, verbos
 
         if isnothing(dt)
             if !isnothing(cfl)
-                dt = minimum(cfl/courant(1.0, mesh, m, w) for m in models)
+                dt = minimum(cfl/courant(1.0, m, mesh, w) for m in models)
             else
                 error("No time step nor Courant number has been provided :(")
             end
@@ -163,10 +163,10 @@ function run!(models, mesh, w, t; nb_time_steps, dt=nothing, cfl=nothing, verbos
     return t
 end
 
-function run(model, grid, w₀; kwargs...)
+function run(model, mesh, w₀; kwargs...)
 	w = deepcopy(w₀)
     t = 0.0
-    run!(model, grid, w, t; kwargs...)
+    run!(model, mesh, w, t; kwargs...)
 	return t, w
 end
 

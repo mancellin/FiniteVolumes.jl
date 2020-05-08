@@ -1,16 +1,14 @@
-identity(x) = x
-
-function upwind_cell(grid, model::ScalarLinearAdvection, w, i_face)
-    local_model = rotate_model(model, rotation_matrix(grid, i_face))
+function upwind_cell(model::ScalarLinearAdvection, mesh, w, i_face)
+    local_model = rotate_model(model, rotation_matrix(mesh, i_face))
     local_velocity = local_model.velocity[1]
-    i_cell_1, i_cell_2 = cells_next_to_inner_face(grid, i_face)
+    i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
     up_cell = local_velocity > 0.0 ? i_cell_1 : i_cell_2
     return local_velocity, up_cell
 end
 
-function upwind_stencil(grid, model::ScalarLinearAdvection, w, i_face)
-    local_velocity, up_cell = upwind_cell(grid, model, w, i_face)
-    st = oriented_stencil(grid, up_cell, i_face)
+function upwind_stencil(model::ScalarLinearAdvection, mesh, w, i_face)
+    local_velocity, up_cell = upwind_cell(model, mesh, w, i_face)
+    st = oriented_stencil(mesh, up_cell, i_face)
     if ndims(st) == 1
         wst = OffsetArray(@SVector [w[st[-1]], w[st[0]], w[st[1]]]
                           , -1:1)
@@ -29,6 +27,8 @@ end
 #  Muscl  #
 ###########
 
+identity(x) = x
+
 Base.@kwdef struct Muscl{L, R} <: NumericalFlux
     limiter::L
     renormalize::R = identity
@@ -39,11 +39,11 @@ superbee    = (a, b) -> a*b <= 0 ? 0.0 : (a >= 0 ? max(min(2*a, b), min(a, 2*b))
 ultrabee(β) = (a, b) -> a*b <= 0 ? 0.0 : (a >= 0 ? 2*max(0, min((1/β-1)*a, b)) : -ultrabee(β)(-a, -b))
 
 
-function (s::Muscl)(grid, model::ScalarLinearAdvection, w, i_face)
-    if grid isa RegularMesh1D
-        v, wst = upwind_stencil(grid, model, w, i_face)
+function (s::Muscl)(model::ScalarLinearAdvection, mesh, w, i_face)
+    if mesh isa RegularMesh1D
+        v, wst = upwind_stencil(model, mesh, w, i_face)
     else
-        v, wst2d = upwind_stencil(grid, model, w, i_face)
+        v, wst2d = upwind_stencil(model, mesh, w, i_face)
         wst = OffsetArray(SVector(wst2d[-1, 0], wst2d[0, 0], wst2d[1, 0]), -1:1)
     end
     grad_w::eltype(w) = s.limiter.(wst[0] - wst[-1], wst[1] - wst[0])
@@ -61,8 +61,8 @@ Base.@kwdef struct VOF{M} <: NumericalFlux
     β::Float64
 end
 
-function (s::VOF)(grid, model::ScalarLinearAdvection, w, i_face)
-    v, wst = FiniteVolumes.upwind_stencil(grid, model, w, i_face)
+function (s::VOF)(model::ScalarLinearAdvection, mesh, w, i_face)
+    v, wst = FiniteVolumes.upwind_stencil(model, mesh, w, i_face)
     α_flux = s.method(wst, s.β)
     return eltype(w)(v * α_flux)
 end
@@ -86,11 +86,11 @@ end
 
 cut_in_range(inf, sup, x) = min(sup, max(inf, x))
 
-function (s::LagoutiereDownwind)(grid, model::ScalarLinearAdvection{1, T, D}, w, i_face) where {T, D}
-    if grid isa RegularMesh1D
-        v, wst = upwind_stencil(grid, model, w, i_face)
+function (s::LagoutiereDownwind)(model::ScalarLinearAdvection{1, T, D}, mesh, w, i_face) where {T, D}
+    if mesh isa RegularMesh1D
+        v, wst = upwind_stencil(model, mesh, w, i_face)
     else
-        v, wst2d = upwind_stencil(grid, model, w, i_face)
+        v, wst2d = upwind_stencil(model, mesh, w, i_face)
         wst = OffsetArray(SVector(wst2d[-1, 0], wst2d[0, 0], wst2d[1, 0]), -1:1)
     end
     borneinf, bornesup = stability_range(wst, s.β)
@@ -98,11 +98,11 @@ function (s::LagoutiereDownwind)(grid, model::ScalarLinearAdvection{1, T, D}, w,
     return eltype(w)(v * α_flux)
 end
 
-function (s::LagoutiereDownwind)(grid, model::ScalarLinearAdvection{N, T, D}, w, i_face) where {N, T, D}
-    if grid isa RegularMesh1D
-        v, wst = upwind_stencil(grid, model, w, i_face)
+function (s::LagoutiereDownwind)(model::ScalarLinearAdvection{N, T, D}, mesh, w, i_face) where {N, T, D}
+    if mesh isa RegularMesh1D
+        v, wst = upwind_stencil(model, mesh, w, i_face)
     else
-        v, wst2d = upwind_stencil(grid, model, w, i_face)
+        v, wst2d = upwind_stencil(model, mesh, w, i_face)
         wst = OffsetArray(SVector(wst2d[-1, 0], wst2d[0, 0], wst2d[1, 0]), -1:1)
     end
 
