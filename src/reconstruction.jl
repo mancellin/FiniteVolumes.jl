@@ -63,8 +63,12 @@ end
 
 function (s::VOF)(model::ScalarLinearAdvection, mesh, w, i_face; dt=0.0)
     u, wst, Δx = upwind_stencil(model, mesh, w, i_face, max_stencil_dims=2)
-    α_flux = s.method(wst, dt*u/Δx)
-    return eltype(w)(u * α_flux)
+    if abs(u) < 1e-10
+        return zero(eltype(w))
+    else
+        α_flux = s.method(wst, dt*u/Δx)
+        return eltype(w)(u * α_flux)
+    end
 end
 
 
