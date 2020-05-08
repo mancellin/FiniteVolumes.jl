@@ -44,7 +44,7 @@ function (s::Muscl)(grid, model::ScalarLinearAdvection, w, wsupp, i_face)
         v, wst = upwind_stencil(grid, model, w, wsupp, i_face)
     else
         v, wst2d = upwind_stencil(grid, model, w, wsupp, i_face)
-        wst = OffsetArray(SVector(wst2d[0, -1], wst2d[0, 0], wst2d[0, 1]), -1:1)
+        wst = OffsetArray(SVector(wst2d[-1, 0], wst2d[0, 0], wst2d[1, 0]), -1:1)
     end
     grad_w::eltype(w) = s.limiter.(wst[0] - wst[-1], wst[1] - wst[0])
     re_w::eltype(w) = wst[0] .+ 0.5 * grad_w
@@ -91,7 +91,7 @@ function (s::LagoutiereDownwind)(grid, model::ScalarLinearAdvection{1, T, D}, w,
         v, wst = upwind_stencil(grid, model, w, wsupp, i_face)
     else
         v, wst2d = upwind_stencil(grid, model, w, wsupp, i_face)
-        wst = OffsetArray(SVector(wst2d[0, -1], wst2d[0, 0], wst2d[0, 1]), -1:1)
+        wst = OffsetArray(SVector(wst2d[-1, 0], wst2d[0, 0], wst2d[1, 0]), -1:1)
     end
     borneinf, bornesup = stability_range(wst, s.β)
     α_flux = cut_in_range(borneinf, bornesup, wst[1])
