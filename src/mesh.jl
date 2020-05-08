@@ -152,26 +152,9 @@ function cell_next_to_boundary_face(grid::RegularMesh2D, i_face)
 end
 cell_next_to_boundary_face(grid::PeriodicRegularMesh2D, i_face) = error("No boundary faces in this mesh.")
 
-
-
 face_area(grid::AbstractRegularMesh2D, i_face)::Float64 = _is_horizontal(i_face) ? dx(grid) : dy(grid)
 
 cell_volume(grid::AbstractRegularMesh2D, i_cell)::Float64 = dx(grid)*dy(grid)
-
-_bottom_left_corner(grid::AbstractRegularMesh2D, i_cell) = cell_center(grid, i_cell) .- @SVector [dx(grid)/2, dy(grid)/2]
-_top_right_corner(grid::AbstractRegularMesh2D, i_cell) = cell_center(grid, i_cell) .+ @SVector [dx(grid)/2, dy(grid)/2]
- 
-using PolygonArea
-_cell_as_polygon(grid::AbstractRegularMesh2D, i_cell) = rectangle(_bottom_left_corner(grid, i_cell)...,
-                                                                  _top_right_corner(grid, i_cell)...)
-
-function integrate(poly::PolygonArea.ConvexPolygon, grid::AbstractRegularMesh2D)
-    α = zeros(Float64, nb_cells(grid))
-    for i_cell in 1:nb_cells(grid)
-        α[i_cell] = area(poly ∩ _cell_as_polygon(grid, i_cell))/cell_volume(grid, i_cell)
-    end
-    return α
-end
 
 function rotation_matrix(grid::AbstractRegularMesh2D, i_face)
     if _is_horizontal(i_face)
