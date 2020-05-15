@@ -127,7 +127,7 @@ end
 
 run!(model::AbstractModel, args...; kwargs...) = run!([model], args...; kwargs...)
 
-function run!(models, mesh, w, t; nb_time_steps, dt=nothing, cfl=nothing, verbose=true, kwargs...)
+function run!(models, mesh, w, t; nb_time_steps, dt=nothing, cfl=nothing, verbose=true, callback=nothing, kwargs...)
 
 	if verbose
 		p = Progress(nb_time_steps, dt=0.1)
@@ -154,6 +154,10 @@ function run!(models, mesh, w, t; nb_time_steps, dt=nothing, cfl=nothing, verbos
 		end
 
         t += dt
+
+        if callback != nothing
+            callback(i_time_step, t, w)
+        end
     end
 
     return t
