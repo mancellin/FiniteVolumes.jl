@@ -164,6 +164,16 @@ function rotation_matrix(grid::AbstractRegularMesh2D, i_face)
     end
 end
 
+function cell_corners(mesh::AbstractRegularMesh2D, i_cell)
+    c = cell_center(mesh, i_cell)
+    return (
+     bottom_left= SVector(c[1] - dx(mesh)/2, c[2] - dy(mesh)/2),
+     top_left=    SVector(c[1] - dx(mesh)/2, c[2] + dy(mesh)/2),
+     bottom_right=SVector(c[1] + dx(mesh)/2, c[2] - dy(mesh)/2),
+     top_right=   SVector(c[1] + dx(mesh)/2, c[2] + dy(mesh)/2),
+    )
+end
+
 # Indices of the cells in the 3x3 stencil around i_cell
 function stencil(grid::AbstractRegularMesh2D, i_cell)
 	if i_cell % grid.nx == 0  # Last cell at the end of a row

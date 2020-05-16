@@ -48,7 +48,8 @@ using FiniteVolumes
 
         @test FiniteVolumes.cell_volume(m, 1) ≈ 0.04
 
-        @test FiniteVolumes._bottom_left_corner(m, 1) == @SVector [0.0, 0.0]
+        @test FiniteVolumes.cell_corners(m, 1).bottom_left == @SVector [0.0, 0.0]
+        @test FiniteVolumes.cell_corners(m, nb_cells(m)).top_right == @SVector [1.0, 1.0]
 
         @test FiniteVolumes.stencil(m, 1).parent == @SMatrix [1 1 6; 1 1 6; 2 2 7]
         @test FiniteVolumes.stencil(m, 12).parent == @SMatrix [6 11 16; 7 12 17; 8 13 18]
@@ -81,7 +82,8 @@ using FiniteVolumes
         
         @test FiniteVolumes.cell_volume(m, 1) == 0.1
 
-        @test FiniteVolumes._bottom_left_corner(m, 1) == @SVector [0.0, 0.0]
+        @test FiniteVolumes.cell_corners(m, 1).bottom_left == @SVector [0.0, 0.0]
+        @test FiniteVolumes.cell_corners(m, nb_cells(m)).top_right == @SVector [1.0, 1.0]
 
         @test FiniteVolumes.stencil(m, 1).parent == @SMatrix [1 1 6; 1 1 6; 2 2 7]
     end
