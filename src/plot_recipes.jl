@@ -30,6 +30,7 @@ end
 @recipe function plot(grid::AbstractRegularMesh2D, w, vars::Tuple{Int, Int, Int};
                       base_colors=(XYZ(1.0, 0.0, 0.2), XYZ(0.0, 1.0, 0.2), XYZ(0.0, 0.0, 0.0)))
     seriestype := :image
+    yflip --> false
 
     x = LinRange(grid.x_min, grid.x_max, grid.nx)
     y = LinRange(grid.y_min, grid.y_max, grid.ny)
