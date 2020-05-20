@@ -6,9 +6,12 @@ using StaticArrays
 
     @testset "Initialization" begin
         # Explicit creation
-        st = Stencil{3, 3, Float64}( @SMatrix zeros(3, 3) )
-        @test st[0, 0] == 0.0
+        st = Stencil{3, 3, Float64}( @SMatrix rand(3, 3) )
+        @test 0.0 <= st[0, 0] <= 1.0
         @test size(st) == (3, 3)
+
+        st2 = Stencil(st.data)
+        @test st[0, 0] == st2[0, 0]
 
         # Implicit creation
         # 3×3
@@ -20,6 +23,10 @@ using StaticArrays
         @test st[-1, 0] == 1
         @test st[0, 0] == 2
         @test st[1, 0] == 3
+
+        # 
+        st = Stencil(SVector(1, 2, 3))
+        @test typeof(st) == Stencil{3, 1, Int}
 
         # 5×5
         st = Stencil(reshape(collect(1:25), 5, 5))
@@ -37,5 +44,8 @@ using StaticArrays
 
         @test rot180(st)[1, 1] == st[-1, -1]
         @test rot180(st)[0, 1] == st[0, -1]
+
+        st = Stencil(reshape(collect(1:3), 3, 1))
+        @test reverse(st)[-1, 0] == st[1, 0]
     end
 end

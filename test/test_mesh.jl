@@ -51,8 +51,8 @@ using FiniteVolumes
         @test FiniteVolumes.cell_corners(m, 1).bottom_left == @SVector [0.0, 0.0]
         @test FiniteVolumes.cell_corners(m, nb_cells(m)).top_right == @SVector [1.0, 1.0]
 
-        @test FiniteVolumes.stencil(m, 1).parent == @SMatrix [1 1 6; 1 1 6; 2 2 7]
-        @test FiniteVolumes.stencil(m, 12).parent == @SMatrix [6 11 16; 7 12 17; 8 13 18]
+        @test Stencil(m, 1).data == @SMatrix [1 1 6; 1 1 6; 2 2 7]
+        @test Stencil(m, 12).data == @SMatrix [6 11 16; 7 12 17; 8 13 18]
     end
 
     @testset "Rectangular 2D mesh" begin
@@ -85,23 +85,23 @@ using FiniteVolumes
         @test FiniteVolumes.cell_corners(m, 1).bottom_left == @SVector [0.0, 0.0]
         @test FiniteVolumes.cell_corners(m, nb_cells(m)).top_right == @SVector [1.0, 1.0]
 
-        @test FiniteVolumes.stencil(m, 1).parent == @SMatrix [1 1 6; 1 1 6; 2 2 7]
+        @test Stencil(m, 1).data == @SMatrix [1 1 6; 1 1 6; 2 2 7]
     end
 
     @testset "Stencils" begin
 
         grid = PeriodicRegularMesh2D(3, 3)
-        st = FiniteVolumes.stencil(grid, 5)
+        st = Stencil(grid, 5)
         @test st[-1, -1] == 1
         @test st[1, 0] == 6
         @test st[1, 1] == 9
 
-        st = FiniteVolumes.stencil(grid, 1)
+        st = Stencil(grid, 1)
         @test st[-1, -1] == 9
         @test st[1, 0] == 2
         @test st[1, 1] == 5
 
-        st = FiniteVolumes.stencil(grid, 3)
+        st = Stencil(grid, 3)
         @test st[-1, -1] == 8
         @test st[1, 0] == 1
         @test st[1, 1] == 4

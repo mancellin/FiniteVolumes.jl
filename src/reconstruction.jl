@@ -15,17 +15,17 @@ function upwind_stencil(model, mesh, w, i_face; max_stencil_dims=2)
     st = oriented_stencil(mesh, i_cell, i_face)
     if nb_dims(mesh) == 1
         Δx = dx(mesh)
-        wst = OffsetArray(SVector(w[st[-1]], w[st[0]], w[st[1]]), -1:1)
+        wst = Stencil(SVector(w[st[-1, 0]], w[st[0, 0]], w[st[1, 0]]))
     elseif nb_dims(mesh) == 2 && max_stencil_dims == 1
         Δx = _is_horizontal(i_face) ? dy(mesh) : dx(mesh)
-        wst = OffsetArray(SVector(w[st[-1, 0]], w[st[0, 0]], w[st[1, 0]]), -1:1)
+        wst = Stencil(SVector(w[st[-1, 0]], w[st[0, 0]], w[st[1, 0]]))
     elseif nb_dims(mesh) == 2 && max_stencil_dims == 2
         Δx = _is_horizontal(i_face) ? dy(mesh) : dx(mesh)
-        wst = OffsetArray(
+        wst = Stencil(
                           @SMatrix [w[st[-1, -1]] w[st[-1, 0]] w[st[-1, 1]];
                                     w[st[0, -1]]  w[st[0, 0]]  w[st[0, 1]];
                                     w[st[1, -1]]  w[st[1, 0]]  w[st[1, 1]]]
-                          , -1:1, -1:1)
+                         )
     end
     return u, wst, Δx
 end
