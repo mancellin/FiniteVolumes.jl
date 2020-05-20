@@ -27,14 +27,22 @@ end
     x, y, field
 end
 
-@recipe function plot(grid::AbstractRegularMesh2D, w, vars::Tuple{Int, Int, Int};
-                      base_colors=(XYZ(1.0, 0.0, 0.2), XYZ(0.0, 1.0, 0.2), XYZ(0.0, 0.0, 0.0)))
+@recipe function plot(grid::AbstractRegularMesh2D, w, vars::NTuple{N, Int};
+                      base_colors=nothing) where N
     seriestype := :image
     yflip --> false
 
+    if base_colors == nothing
+        if N == 3
+            base_colors = (XYZ(1.0, 0.0, 0.2), XYZ(0.0, 1.0, 0.2), XYZ(0.0, 0.0, 0.0))
+        elseif N == 4
+            base_colors = (XYZ(0.9, 0.0, 0.0), XYZ(0.0, 0.9, 0.0), XYZ(0.0, 0.0, 0.9), XYZ(0.0, 0.0, 0.0))
+        end
+    end
+
     x = LinRange(grid.x_min, grid.x_max, grid.nx)
     y = LinRange(grid.y_min, grid.y_max, grid.ny)
-    pixels = [wi[vars[1]]*base_colors[1] + wi[vars[2]]*base_colors[2] + wi[vars[3]]*base_colors[3] for wi in w]
+    pixels = [sum(wi[vars[k]]*base_colors[k] for k in 1:N) for wi in w]
     field = permutedims(reshape(pixels, (grid.nx, grid.ny)), (2, 1))
     x, y, field
 end
