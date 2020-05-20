@@ -11,6 +11,9 @@ export ScalarLinearAdvection
 include("./models/isothermal_two_fluid.jl")
 export IsothermalTwoFluidEuler, full_state
 
+include("./stencil.jl")
+export Stencil
+
 include("./mesh.jl")
 export RegularMesh1D, RegularMesh2D, PeriodicRegularMesh2D, nb_dims, nb_cells, cell_center
 
