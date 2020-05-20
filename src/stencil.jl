@@ -56,6 +56,30 @@ function transpose(st::Stencil{3, 3, T}) where T
                       )
 end
 
+more_above(s::Stencil{3, 3, T}) where T = s[-1, 1] + s[0, 1] + s[1, 1] > s[-1, -1] + s[0, -1] + s[1, -1]
+more_below(s::Stencil{3, 3, T}) where T = s[-1, 1] + s[0, 1] + s[1, 1] < s[-1, -1] + s[0, -1] + s[1, -1]
+
+function upsidedown(st::Stencil{3, 3, T}) where T
+    return Stencil{3, 3, T}(
+                            @SMatrix [st[-1, 1]  st[-1, 0]  st[-1, -1];
+                                      st[0, 1]   st[0, 0]   st[0, -1];
+                                      st[1, 1]   st[1, 0]   st[1, -1]]
+                           )
+end
+
+more_on_the_left(s::Stencil{3, 3, T}) where T = s[-1, -1] + s[-1, 0] + s[-1, 1] > s[1, -1] + s[1, 0] + s[1, 1]
+more_on_the_right(s::Stencil{3, 3, T}) where T = s[-1, -1] + s[-1, 0] + s[-1, 1] < s[1, -1] + s[1, 0] + s[1, 1]
+
+function rightsideleft(st::Stencil{3, 3, T}) where T
+    return Stencil{3, 3, T}(
+                            @SMatrix [st[1, -1]  st[1, 0]  st[1, 1];
+                                      st[0, -1]  st[0, 0]  st[0, 1];
+                                      st[-1, -1] st[-1, 0] st[-1, 1]]
+                           )
+end
+
+more_than_half_full(s::Stencil{3, 3, T}) where T = sum(s.data)/length(s.data) > 0.5
+
 ###################
 #  RegularMesh1D  #
 ###################

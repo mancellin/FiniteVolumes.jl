@@ -1,5 +1,6 @@
 using Test
 using FiniteVolumes
+using FiniteVolumes: upsidedown, rightsideleft
 using StaticArrays
 
 @testset "Stencils" begin
@@ -44,6 +45,18 @@ using StaticArrays
 
         @test rot180(st)[1, 1] == st[-1, -1]
         @test rot180(st)[0, 1] == st[0, -1]
+
+        @test upsidedown(st)[0, 1] == st[0, -1]
+        @test upsidedown(st)[1, 1] == st[1, -1]
+
+        @test rightsideleft(st)[1, 0] == st[-1, 0]
+        @test rightsideleft(st)[1, 1] == st[-1, 1]
+
+        @test FiniteVolumes.more_above(st)
+        @test FiniteVolumes.more_below(upsidedown(st))
+
+        @test FiniteVolumes.more_on_the_right(st)
+        @test FiniteVolumes.more_on_the_left(rightsideleft(st))
 
         st = Stencil(reshape(collect(1:3), 3, 1))
         @test reverse(st)[-1, 0] == st[1, 0]
