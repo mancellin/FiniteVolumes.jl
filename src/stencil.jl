@@ -1,5 +1,6 @@
 import Base.getindex
 import Base.size
+import Base.eltype
 import Base.rotr90
 import Base.rotl90
 import Base.rot180
@@ -13,72 +14,75 @@ end
 Stencil(s::SVector) = Stencil{length(s), 1, eltype(s)}(s)
 Stencil(s::AbstractMatrix) = Stencil(SMatrix{size(s)..., eltype(s)}(s...))
 
-offset_i(::Stencil{NY, NX, T}) where {NX, NY, T} = (NY - 1) ÷ 2 + 1
-offset_j(::Stencil{NY, NX, T}) where {NX, NY, T} = (NX - 1) ÷ 2 + 1
+offset_i(::Stencil{NY, NX}) where {NX, NY} = (NY - 1) ÷ 2 + 1
+offset_j(::Stencil{NY, NX}) where {NX, NY} = (NX - 1) ÷ 2 + 1
 
+eltype(s::Stencil{N, M, T}) where {N, M, T} = T
 getindex(s::Stencil, i::Int) = getindex(s.data, i + offset_i(s), 1)
 getindex(s::Stencil, i::Int, j::Int) = getindex(s.data, i + offset_i(s), j + offset_j(s))
 size(s::Stencil) = size(s.data)
 
-function reverse(st::Stencil{3, 1, T}) where T
-    return Stencil(SMatrix{3, 1, T}(st[1, 0], st[0, 0], st[-1, 0]))
+function reverse(st::Stencil{3, 1})
+    return Stencil(SMatrix{3, 1, eltype(st)}(st[1, 0], st[0, 0], st[-1, 0]))
 end
 
-function rotr90(st::Stencil{3, 3, T}) where T
-    return Stencil{3, 3, T}(
-                            @SMatrix [st[1, -1]  st[0, -1]  st[-1, -1];
-                                      st[1, 0]   st[0, 0]   st[-1, 0];
-                                      st[1, 1]   st[0, 1]   st[-1, 1]]
-                           )
+function rotr90(st::Stencil{3, 3})
+    return typeof(st)(
+                      @SMatrix [st[1, -1]  st[0, -1]  st[-1, -1];
+                                st[1, 0]   st[0, 0]   st[-1, 0];
+                                st[1, 1]   st[0, 1]   st[-1, 1]]
+                     )
 end
 
-function rotl90(st::Stencil{3, 3, T}) where T
-    return Stencil{3, 3, T}(
-                            @SMatrix [st[-1, 1]  st[0, 1]  st[1, 1];
-                                      st[-1, 0]  st[0, 0]  st[1, 0];
-                                      st[-1, -1] st[0, -1] st[1, -1]]
-                           )
+function rotl90(st::Stencil{3, 3})
+    return typeof(st)(
+                      @SMatrix [st[-1, 1]  st[0, 1]  st[1, 1];
+                                st[-1, 0]  st[0, 0]  st[1, 0];
+                                st[-1, -1] st[0, -1] st[1, -1]]
+                     )
 end
 
-function rot180(st::Stencil{3, 3, T}) where T
-    return Stencil{3, 3, T}(
-                            @SMatrix [st[1, 1]   st[1, 0]   st[1, -1];
-                                      st[0, 1]   st[0, 0]   st[0, -1];
-                                      st[-1, 1]  st[-1, 0]  st[-1, -1]]
-                           )
+function rot180(st::Stencil{3, 3})
+    return typeof(st)(
+                      @SMatrix [st[1, 1]   st[1, 0]   st[1, -1];
+                                st[0, 1]   st[0, 0]   st[0, -1];
+                                st[-1, 1]  st[-1, 0]  st[-1, -1]]
+                     )
 end
 
-function transpose(st::Stencil{3, 3, T}) where T
-    return Stencil{3, 3, T}(
-                       @SMatrix [st[-1, -1]  st[0, -1]  st[1, -1];
-                                 st[-1, 0]   st[0, 0]   st[1, 0];
-                                 st[-1, 1]   st[0, 1]   st[1, 1]]
-                      )
+function transpose(st::Stencil{3, 3})
+    return typeof(st)(
+                      @SMatrix [st[-1, -1]  st[0, -1]  st[1, -1];
+                                st[-1, 0]   st[0, 0]   st[1, 0];
+                                st[-1, 1]   st[0, 1]   st[1, 1]]
+                     )
 end
 
-more_above(s::Stencil{3, 3, T}) where T = s[-1, 1] + s[0, 1] + s[1, 1] > s[-1, -1] + s[0, -1] + s[1, -1]
-more_below(s::Stencil{3, 3, T}) where T = s[-1, 1] + s[0, 1] + s[1, 1] < s[-1, -1] + s[0, -1] + s[1, -1]
+more_above(s::Stencil{3, 3}) = s[-1, 1] + s[0, 1] + s[1, 1] > s[-1, -1] + s[0, -1] + s[1, -1]
+more_below(s::Stencil{3, 3}) = s[-1, 1] + s[0, 1] + s[1, 1] < s[-1, -1] + s[0, -1] + s[1, -1]
 
-function upsidedown(st::Stencil{3, 3, T}) where T
-    return Stencil{3, 3, T}(
-                            @SMatrix [st[-1, 1]  st[-1, 0]  st[-1, -1];
-                                      st[0, 1]   st[0, 0]   st[0, -1];
-                                      st[1, 1]   st[1, 0]   st[1, -1]]
-                           )
+function upsidedown(st::Stencil{3, 3})
+    return typeof(st)(
+                      @SMatrix [st[-1, 1]  st[-1, 0]  st[-1, -1];
+                                st[0, 1]   st[0, 0]   st[0, -1];
+                                st[1, 1]   st[1, 0]   st[1, -1]]
+                     )
 end
 
-more_on_the_left(s::Stencil{3, 3, T}) where T = s[-1, -1] + s[-1, 0] + s[-1, 1] > s[1, -1] + s[1, 0] + s[1, 1]
-more_on_the_right(s::Stencil{3, 3, T}) where T = s[-1, -1] + s[-1, 0] + s[-1, 1] < s[1, -1] + s[1, 0] + s[1, 1]
+more_on_the_left(s::Stencil{3, 3}) = s[-1, -1] + s[-1, 0] + s[-1, 1] > s[1, -1] + s[1, 0] + s[1, 1]
+more_on_the_right(s::Stencil{3, 3}) = s[-1, -1] + s[-1, 0] + s[-1, 1] < s[1, -1] + s[1, 0] + s[1, 1]
 
-function rightsideleft(st::Stencil{3, 3, T}) where T
-    return Stencil{3, 3, T}(
+function rightsideleft(st::Stencil{3, 3})
+    return typeof(st)(
                             @SMatrix [st[1, -1]  st[1, 0]  st[1, 1];
                                       st[0, -1]  st[0, 0]  st[0, 1];
                                       st[-1, -1] st[-1, 0] st[-1, 1]]
                            )
 end
 
-more_than_half_full(s::Stencil{3, 3, T}) where T = sum(s.data)/length(s.data) > 0.5
+more_than_half_full(s::Stencil{3, 3}) = sum(s.data)/length(s.data) > 0.5
+more_than_half_empty(s::Stencil{3, 3}) = sum(s.data)/length(s.data) < 0.5
+invert(s::Stencil) =  typeof(s)(1.0 .- s.data)
 
 ###################
 #  RegularMesh1D  #
