@@ -107,7 +107,7 @@ function (s::LagoutiereDownwind)(model::ScalarLinearAdvection{N, T, D}, mesh, w,
         bornesup = @MVector zeros(nb_vars(model))
         borneinf = @MVector zeros(nb_vars(model))
         for i in 1:nb_vars(model)
-            wi = (x -> x[i]).(wst)
+            wi = map(x -> x[i], wst)
             borneinf[i], bornesup[i] = stability_range(wi, dt*u/Δx)
         end
 
