@@ -60,5 +60,8 @@ using StaticArrays
 
         st = Stencil(reshape(collect(1:3), 3, 1))
         @test reverse(st)[-1, 0] == st[1, 0]
+
+        @test map(x -> 2x, st) |> typeof == Stencil{3, 1, Int}
+        @test map(Float64, st) |> typeof == Stencil{3, 1, Float64}
     end
 end

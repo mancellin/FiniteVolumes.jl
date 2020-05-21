@@ -1,5 +1,6 @@
 import Base.getindex
 import Base.size
+import Base.map
 import Base.eltype
 import Base.rotr90
 import Base.rotl90
@@ -11,6 +12,7 @@ struct Stencil{NY, NX, T}
     data::SMatrix{NY, NX, T}
 end
 
+Stencil{N, M}(s) where {N, M} = Stencil{N, M, eltype(s)}(s)
 Stencil(s::SVector) = Stencil{length(s), 1, eltype(s)}(s)
 Stencil(s::AbstractMatrix) = Stencil(SMatrix{size(s)..., eltype(s)}(s...))
 
@@ -21,6 +23,8 @@ eltype(s::Stencil{N, M, T}) where {N, M, T} = T
 getindex(s::Stencil, i::Int) = getindex(s.data, i + offset_i(s), 1)
 getindex(s::Stencil, i::Int, j::Int) = getindex(s.data, i + offset_i(s), j + offset_j(s))
 size(s::Stencil) = size(s.data)
+
+map(f, s::Stencil{N, M}) where {N, M} = Stencil{N, M}(map(f, s.data))
 
 function reverse(st::Stencil{3, 1})
     return Stencil(SMatrix{3, 1, eltype(st)}(st[1, 0], st[0, 0], st[-1, 0]))
