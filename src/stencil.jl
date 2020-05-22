@@ -1,13 +1,3 @@
-import Base.getindex
-import Base.size
-import Base.map
-import Base.eltype
-import Base.rotr90
-import Base.rotl90
-import Base.rot180
-import Base.transpose
-import Base.reverse
-
 struct Stencil{NY, NX, T}
     data::SMatrix{NY, NX, T}
 end
@@ -19,18 +9,18 @@ Stencil(s::AbstractMatrix) = Stencil(SMatrix{size(s)..., eltype(s)}(s...))
 offset_i(::Stencil{NY, NX}) where {NX, NY} = (NY - 1) ÷ 2 + 1
 offset_j(::Stencil{NY, NX}) where {NX, NY} = (NX - 1) ÷ 2 + 1
 
-eltype(s::Stencil{N, M, T}) where {N, M, T} = T
-getindex(s::Stencil, i::Int) = getindex(s.data, i + offset_i(s), 1)
-getindex(s::Stencil, i::Int, j::Int) = getindex(s.data, i + offset_i(s), j + offset_j(s))
-size(s::Stencil) = size(s.data)
+Base.eltype(s::Stencil{N, M, T}) where {N, M, T} = T
+Base.getindex(s::Stencil, i::Int) = getindex(s.data, i + offset_i(s), 1)
+Base.getindex(s::Stencil, i::Int, j::Int) = getindex(s.data, i + offset_i(s), j + offset_j(s))
+Base.size(s::Stencil) = size(s.data)
 
-map(f, s::Stencil{N, M}) where {N, M} = Stencil{N, M}(map(f, s.data))
+Base.map(f, s::Stencil{N, M}) where {N, M} = Stencil{N, M}(map(f, s.data))
 
-function reverse(st::Stencil{3, 1})
+function Base.reverse(st::Stencil{3, 1})
     return Stencil(SMatrix{3, 1, eltype(st)}(st[1, 0], st[0, 0], st[-1, 0]))
 end
 
-function rotr90(st::Stencil{3, 3})
+function Base.rotr90(st::Stencil{3, 3})
     return typeof(st)(
                       @SMatrix [st[1, -1]  st[0, -1]  st[-1, -1];
                                 st[1, 0]   st[0, 0]   st[-1, 0];
@@ -38,7 +28,7 @@ function rotr90(st::Stencil{3, 3})
                      )
 end
 
-function rotl90(st::Stencil{3, 3})
+function Base.rotl90(st::Stencil{3, 3})
     return typeof(st)(
                       @SMatrix [st[-1, 1]  st[0, 1]  st[1, 1];
                                 st[-1, 0]  st[0, 0]  st[1, 0];
@@ -46,7 +36,7 @@ function rotl90(st::Stencil{3, 3})
                      )
 end
 
-function rot180(st::Stencil{3, 3})
+function Base.rot180(st::Stencil{3, 3})
     return typeof(st)(
                       @SMatrix [st[1, 1]   st[1, 0]   st[1, -1];
                                 st[0, 1]   st[0, 0]   st[0, -1];
@@ -54,7 +44,7 @@ function rot180(st::Stencil{3, 3})
                      )
 end
 
-function transpose(st::Stencil{3, 3})
+function Base.transpose(st::Stencil{3, 3})
     return typeof(st)(
                       @SMatrix [st[-1, -1]  st[0, -1]  st[1, -1];
                                 st[-1, 0]   st[0, 0]   st[1, 0];
