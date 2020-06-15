@@ -39,6 +39,7 @@ end
             base_colors = (XYZ(0.9, 0.0, 0.0), XYZ(0.0, 0.9, 0.0), XYZ(0.0, 0.0, 0.9), XYZ(0.0, 0.0, 0.0))
         end
     end
+    base_colors = XYZ.(base_colors)
 
     x = LinRange(grid.x_min, grid.x_max, grid.nx)
     y = LinRange(grid.y_min, grid.y_max, grid.ny)
