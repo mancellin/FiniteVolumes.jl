@@ -165,8 +165,7 @@ end
 
 function run(model, mesh, w₀; kwargs...)
 	w = deepcopy(w₀)
-    t = 0.0
-    run!(model, mesh, w, t; kwargs...)
+    t = run!(model, mesh, w, 0.0; kwargs...)
 	return t, w
 end
 
