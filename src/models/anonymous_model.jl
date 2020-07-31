@@ -1,36 +1,37 @@
 # Anonymous = only defined by a flux function
 
-struct ScalarAnonymousModel{D} <: AbstractModel
-    flux::SVector{D, Function}
+struct AnonymousModel{N, D, T} <: AbstractModel
+    flux::Function
 end
 
-function ScalarAnonymousModel(flux::AbstractArray)
-    D = length(flux)
-    ScalarAnonymousModel{D}(SVector{D, Function}(flux...))
+nb_vars(m::AnonymousModel{N, D, T}) where {N, D, T} = N
+Base.eltype(m::AnonymousModel{N, D, T}) where {N, D, T} = T
+nb_dims(m::AnonymousModel{N, D, T}) where {N, D, T} = D
+
+w_names(m::AnonymousModel{1, D, T}) where {D, T} = (:u,)
+w_names(m::AnonymousModel{N, D, T}) where {N, D, T} = Tuple(Symbol("u_$i") for i in 1:N)
+
+function rotate_model(m::AnonymousModel{N, D, T}, rotation_matrix, position=nothing) where {N, D, T}
+    if D == 1
+        fx = u -> rotation_matrix[1, 1] .* m.flux(u)
+    elseif D > 1
+        fx = u -> (rotation_matrix' * m.flux(u))[1]
+    end
+    AnonymousModel{N, 1, T}(fx)
 end
 
-ScalarAnonymousModel(flux::Function) = ScalarAnonymousModel([flux])
-
-nb_vars(m::ScalarAnonymousModel) = 1
-eltype(m::ScalarAnonymousModel) = Float64
-nb_dims(m::ScalarAnonymousModel{D}) where D = D
-
-w_names(m::ScalarAnonymousModel) = (:u,)
-
-function rotate_model(m::ScalarAnonymousModel{D}, rotation_matrix, position) where D
-    fx = u -> sum(rotation_matrix[i, 1] * m.flux[i](u) for i in 1:D)
-    ScalarAnonymousModel{1}([fx])
-end
-
-normal_flux(m::ScalarAnonymousModel, w) = m.flux[1](w)
+normal_flux(m::AnonymousModel{N, 1, T}, w) where {N, T} = m.flux(w)
 
 using ForwardDiff
 using LinearAlgebra
-eigenvalues(m::ScalarAnonymousModel{D}, w::Number) where {D} = eigenvalues(m, SVector{1, typeof(w)}(w))
-eigenvalues(m::ScalarAnonymousModel{D}, w::SVector) where {D} = eigvals(ForwardDiff.jacobian(w -> m.flux[1](w), w))
 
-# left_eigenvectors(m::ScalarAnonymousModel{D}, w) where {D} = inv(eigen(ForwardDiff.jacobian(w -> m.flux[1](w), w)).vectors)
-# right_eigenvectors(m::ScalarAnonymousModel{D}, w) where {D} = eigen(ForwardDiff.jacobian(w -> m.flux[1](w), w)).vectors
+jacobian(m::AnonymousModel{N, 1, T}, w) where {N, T} = ForwardDiff.jacobian(w -> normal_flux(m, w), w)
+eigenvalues(m::AnonymousModel{N, 1, T}, w) where {N, T} = jacobian(m, w) |> Array |> eigvals
+right_eigenvectors(m::AnonymousModel{N, 1, T}, w) where {N, T} = jacobian(m, w) |> Array |> eigen |> e -> e.vectors
+left_eigenvectors(m::AnonymousModel{N, 1, T}, w) where {N, T} = right_eigenvectors(m, w) |> inv
 
-left_eigenvectors(m::ScalarAnonymousModel{D}, w) where {D} = SMatrix{1, 1, Float64}(I)[1]
-right_eigenvectors(m::ScalarAnonymousModel{D}, w) where {D} = SMatrix{1, 1, Float64}(I)[1]
+# Support for Float instead of single-element SVector
+jacobian(m::AnonymousModel{1, 1, T}, w::Number) where {T} = ForwardDiff.derivative(w -> normal_flux(m, w), w)
+eigenvalues(m::AnonymousModel{1, 1, T}, w::Number) where {T} = jacobian(m, w)
+left_eigenvectors(m::AnonymousModel{1, 1, T}, w::Number) where {T} = 1.0
+right_eigenvectors(m::AnonymousModel{1, 1, T}, w::Number) where {T} = 1.0
