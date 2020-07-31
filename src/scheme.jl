@@ -25,14 +25,14 @@ end
 
 function (::Upwind)(model, mesh, w, i_face; kwargs...)  # l-upwind FVCF
     in_local_coordinates(model, mesh, w, i_face) do local_model, w₁, w₂
-        flux₁ = normal_flux(model, w₁)
-        flux₂ = normal_flux(model, w₂)
+        flux₁ = normal_flux(local_model, w₁)
+        flux₂ = normal_flux(local_model, w₂)
 
-        w_int = compute_w_int(model, w₁, w₂)
-        λ = eigenvalues(model, w_int)
+        w_int = compute_w_int(local_model, w₁, w₂)
+        λ = eigenvalues(local_model, w_int)
 
-        L₁ = left_eigenvectors(model, w₁)
-        L₂ = left_eigenvectors(model, w₂)
+        L₁ = left_eigenvectors(local_model, w₁)
+        L₂ = left_eigenvectors(local_model, w₂)
 
         L_upwind = ifelse.(λ .> 0.0, L₁, L₂)
         L_flux_upwind = ifelse.(λ .> 0.0, L₁ * flux₁, L₂ * flux₂)
