@@ -18,7 +18,7 @@ consvartype(m::AbstractModel, w) = eltype(w)
 invert_v(m::AbstractModel, v) = v
 
 # Default behavior: invariant by rotation
-rotate_model(m::AbstractModel, rotation_matrix) = m
+rotate_model(m::AbstractModel, rotation_matrix, x=nothing) = m
 rotate_state(w, m::AbstractModel, rotation_matrix) = w
 rotate_flux(F, m::AbstractModel, rotation_matrix) = F
 

@@ -32,7 +32,7 @@ nb_dims(m::ScalarLinearAdvection{N, D, T}) where {N, D, T} = D
 w_names(m::ScalarLinearAdvection{1, D, T}) where {D, T} = (:α,)
 w_names(m::ScalarLinearAdvection{N, D, T}) where {N, D, T} = Tuple(Symbol("α_$i") for i in 1:N)
 
-rotate_model(m::ScalarLinearAdvection, rotation_matrix) = typeof(m)(rotation_matrix' * m.velocity)
+rotate_model(m::ScalarLinearAdvection, rotation_matrix, x=nothing) = typeof(m)(rotation_matrix' * m.velocity)
 
 function normal_flux(m::ScalarLinearAdvection{N, D, T}, w) where {N, D, T}
     return typeof(w)(w * m.velocity[1])

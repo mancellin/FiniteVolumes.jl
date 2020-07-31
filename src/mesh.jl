@@ -81,6 +81,17 @@ function cell_center(grid::AbstractRegularMesh2D, i_cell)
                        )
 end
 
+function face_center(grid::RegularMesh2D, i_face)
+    # Could be optimized?
+    if _is_inner_face(grid, i_face)
+        i_cell_1, i_cell_2 = cells_next_to_inner_face(grid, i_face)
+        return (cell_center(grid, i_cell_1) .+ cell_center(grid, i_cell_2))/2
+    else
+        nothing
+    end
+end
+face_center(grid::PeriodicRegularMesh2D, i_face) = nothing
+
 # By convention, all the horizontal faces have even indices.
 _is_horizontal(i_face) = i_face % 2 == 0
 

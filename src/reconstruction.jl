@@ -3,7 +3,7 @@
 ################################################################################
 
 function upwind_cell(model::ScalarLinearAdvection, mesh, i_face)
-    local_model = rotate_model(model, rotation_matrix(mesh, i_face))
+    local_model = rotate_model(model, rotation_matrix(mesh, i_face), face_center(mesh, i_face))
     local_velocity = local_model.velocity[1]
     i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
     up_cell = local_velocity > 0.0 ? i_cell_1 : i_cell_2
