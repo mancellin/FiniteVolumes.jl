@@ -1,5 +1,7 @@
 abstract type AbstractModel end
 
+import Base.eltype
+
 # Functions to be implemented
 function nb_dims end
 function nb_vars end
