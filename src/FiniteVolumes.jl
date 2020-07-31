@@ -8,6 +8,8 @@ export directional_splitting
 include("./models/scalar_linear_advection.jl")
 export ScalarLinearAdvection
 
+include("./models/anonymous_model.jl")
+
 include("./models/isothermal_two_fluid.jl")
 export IsothermalTwoFluidEuler, full_state
 

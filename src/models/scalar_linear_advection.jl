@@ -9,6 +9,8 @@ where
 	T: data type
 
 Advection of N fields with the same constant and uniform velocity.
+
+Scalar fields = invariant by rotation of the domain
 """
 struct ScalarLinearAdvection{N, D, T} <: AbstractModel
     velocity::SVector{D, T}
