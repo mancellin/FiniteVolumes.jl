@@ -31,7 +31,7 @@ end
 
 # Fallback behavior: automatic differentiation of the flux
 using ForwardDiff
-jacobian(m::AbstractModel, w) = ForwardDiff.jacobian(w -> normal_flux(m, w), w)
+jacobian(m::AbstractModel, w) = ForwardDiff.jacobian(v -> normal_flux(m, invert_v(m, v)), compute_v(m, w))
 
 # Fallback behavior: numerical computation of the eigenstructure
 # TODO: improve performance by not recomputing several time

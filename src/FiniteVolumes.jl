@@ -11,6 +11,9 @@ export ScalarLinearAdvection
 
 include("./models/anonymous_model.jl")
 
+include("./models/shallow_waters.jl")
+export ShallowWater
+
 include("./models/isothermal_two_fluid.jl")
 export IsothermalTwoFluidEuler, full_state
 
