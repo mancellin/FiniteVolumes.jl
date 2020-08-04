@@ -29,3 +29,12 @@ function compute_w_int(m::AbstractModel, w_L, w_R)
     return w_mean
 end
 
+# Fallback behavior: automatic differentiation of the flux
+using ForwardDiff
+jacobian(m::AbstractModel, w) = ForwardDiff.jacobian(w -> normal_flux(m, w), w)
+
+# Fallback behavior: numerical computation of the eigenstructure
+# TODO: improve performance by not recomputing several time
+eigenvalues(m::AbstractModel, w) = jacobian(m, w) |> Array |> eigvals
+right_eigenvectors(m::AbstractModel, w) = jacobian(m, w) |> Array |> eigen |> e -> e.vectors
+left_eigenvectors(m::AbstractModel, w) = right_eigenvectors(m, w) |> inv

@@ -1,5 +1,6 @@
 module FiniteVolumes
 
+using LinearAlgebra
 using StaticArrays
 
 include("./models/abstract.jl")

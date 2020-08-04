@@ -22,14 +22,6 @@ end
 
 normal_flux(m::AnonymousModel{N, 1, T}, w) where {N, T} = m.flux(w)
 
-using ForwardDiff
-using LinearAlgebra
-
-jacobian(m::AnonymousModel{N, 1, T}, w) where {N, T} = ForwardDiff.jacobian(w -> normal_flux(m, w), w)
-eigenvalues(m::AnonymousModel{N, 1, T}, w) where {N, T} = jacobian(m, w) |> Array |> eigvals
-right_eigenvectors(m::AnonymousModel{N, 1, T}, w) where {N, T} = jacobian(m, w) |> Array |> eigen |> e -> e.vectors
-left_eigenvectors(m::AnonymousModel{N, 1, T}, w) where {N, T} = right_eigenvectors(m, w) |> inv
-
 # Support for Float instead of single-element SVector
 jacobian(m::AnonymousModel{1, 1, T}, w::Number) where {T} = ForwardDiff.derivative(w -> normal_flux(m, w), w)
 eigenvalues(m::AnonymousModel{1, 1, T}, w::Number) where {T} = jacobian(m, w)
