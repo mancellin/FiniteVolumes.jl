@@ -3,14 +3,23 @@ using StaticArrays
 using FiniteVolumes
 
 @testset "Shallow water" begin
-    m = ShallowWater{1, Float64}(9.81)
-    @test FiniteVolumes.nb_dims(m) == 1
-    @test FiniteVolumes.nb_vars(m) == 2
+    @testset "1D" begin
+        m = ShallowWater{1, Float64}(9.81)
+        @test FiniteVolumes.nb_dims(m) == 1
+        @test FiniteVolumes.nb_vars(m) == 2
 
-    @test FiniteVolumes.normal_flux(m, (h=1.0, u=1.0)) == @SVector [1.0, 1.0+9.81/2]
+        @test FiniteVolumes.normal_flux(m, (h=1.0, u=1.0)) == @SVector [1.0, 1.0+9.81/2]
 
-    for h in [1.0, 2.0], u in [-1.0, 0.0, 1.0]
-        @test all(FiniteVolumes.eigenvalues(m, [h, u]) .≈ [u-sqrt(h*m.g); u+sqrt(h*m.g)])
+        for h in [1.0, 2.0], u in [-1.0, 0.0, 1.0]
+            @test all(FiniteVolumes.eigenvalues(m, [h, u]) .≈ [u-sqrt(h*m.g), u+sqrt(h*m.g)])
+        end
+    end
+
+    @testset "2D" begin
+        m = ShallowWater{2, Float64}(9.81)
+        for h in [1.0, 2.0], ux in [-1.0, 0.0, 1.0], uy = [0.0, 1.0]
+            @test all(FiniteVolumes.eigenvalues(m, [h, ux, uy]) .≈ [ux-sqrt(h*m.g), ux, ux+sqrt(h*m.g)])
+        end
     end
 end
 
