@@ -47,7 +47,12 @@ ultrabee(a, b, β) = a*b <= 0 ? 0.0 : (a >= 0 ? 2*max(0.0, min((1/β-1)*a, b)) :
 
 function (s::Muscl)(model::ScalarLinearAdvection, mesh, w, i_face; dt=0.0)
     u, wst, Δx = upwind_stencil(model, mesh, w, i_face, max_stencil_dims=1)
-    grad_w::eltype(w) = s.limiter.(wst[0] - wst[-1], wst[1] - wst[0], dt*u/Δx)
+    if isnothing(dt)
+        β = nothing
+    else
+        β = dt*u/Δx
+    end
+    grad_w::eltype(w) = s.limiter.(wst[0] - wst[-1], wst[1] - wst[0], β)
     re_w::eltype(w) = wst[0] .+ 0.5 * grad_w
     rere_w::eltype(w) = s.renormalize(re_w)
     return eltype(w)(u * rere_w)
