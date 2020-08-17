@@ -2,7 +2,6 @@
 
 using Test
 using StaticArrays
-
 using FiniteVolumes
 
 @testset "Shallow water" begin
