@@ -1,6 +1,8 @@
+# Test of some schemes
+
 using Test
-using FiniteVolumes
 using StaticArrays
+using FiniteVolumes
 
 @testset "Scalar upwind" begin
     flux = Upwind()

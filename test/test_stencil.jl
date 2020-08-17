@@ -1,3 +1,5 @@
+# Test of the Stencil objects
+
 using Test
 using FiniteVolumes
 using FiniteVolumes: upsidedown, rightsideleft

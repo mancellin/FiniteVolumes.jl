@@ -1,10 +1,14 @@
+# Tests of the AbstractModel objects in FiniteVolumes.jl
+
 using Test
 using StaticArrays
+
 using FiniteVolumes
 
 @testset "Shallow water" begin
     @testset "1D" begin
         m = ShallowWater{1, Float64}(9.81)
+        @test m isa FiniteVolumes.AbstractModel
         @test FiniteVolumes.nb_dims(m) == 1
         @test FiniteVolumes.nb_vars(m) == 2
 

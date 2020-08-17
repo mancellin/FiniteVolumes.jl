@@ -1,3 +1,5 @@
+# Integration tests on some simple test cases.
+
 using Test
 using StaticArrays
 using FiniteVolumes
@@ -23,24 +25,34 @@ riemann_problem(mesh, w₁, w₂) = [cell_center(mesh, i)[1] < 0.5 ? w₁ : w₂
         @test all(w .== w₀)
     end
 
-    @testset "First order scheme" begin
+    @testset "1D linear advection" begin
         mesh = RegularMesh1D(0.0, 1.0, 100)
+
         sine_w₀ = [sin(cell_center(mesh, i)[1]) for i in 1:nb_cells(mesh)]
-        step_w₀ = riemann_problem(mesh, 1.0, 0.0)
-        other_step_w₀ = riemann_problem(mesh, 0.0, 1.0)
+        falling_step_w₀ = riemann_problem(mesh, 1.0, 0.0)
+        rising_step_w₀ = riemann_problem(mesh, 0.0, 1.0)
+        initial_conditions = [sine_w₀, falling_step_w₀, rising_step_w₀]
 
         forward_model = ScalarLinearAdvection(1.0)
         backward_model = ScalarLinearAdvection(-1.0)
 
-        for w₀ in [sine_w₀, step_w₀, other_step_w₀], m in [forward_model, backward_model]
-            t, w = FiniteVolumes.run(m, mesh, w₀, dt=0.001, nb_time_steps=3, verbose=false)
-            @test maximum_principle(w, w₀)
+        schemes = [Upwind(), Muscl(limiter=minmod)]
+        # TODO: bug in Muscl(limiter=ultrabee) for negative velocities
+
+        settings = (cfl=0.1, nb_time_steps=5, verbose=false)
+
+        for w₀ in initial_conditions, s in schemes
+            # Test stability
+            t, wf = FiniteVolumes.run(forward_model, mesh, w₀; numerical_flux=s, settings...)
+            @test maximum_principle(wf, w₀)
+
+            # Test left-right symmetry
+            t, wb = FiniteVolumes.run(backward_model, mesh, reverse(w₀); numerical_flux=s, settings...)
+            @test all(wf .== reverse(wb))
         end
 
-        t, wf = FiniteVolumes.run(forward_model, mesh, step_w₀, dt=0.001, nb_time_steps=3, verbose=false)
-        t, wb = FiniteVolumes.run(backward_model, mesh, other_step_w₀, dt=0.001, nb_time_steps=3, verbose=false)
-        @test all(wf .== reverse(wb))
     end
+
 end
 
 @testset "Euler problems" begin

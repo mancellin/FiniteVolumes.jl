@@ -1,6 +1,7 @@
+# Tests of the AbstractMesh objects in FiniteVolumes.jl
+
 using Test
 using StaticArrays
-
 using FiniteVolumes
 
 @testset "2D meshes" begin
