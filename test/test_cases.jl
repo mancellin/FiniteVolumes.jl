@@ -63,7 +63,20 @@ riemann_problem(mesh, w₁, w₂) = [cell_center(mesh, i)[1] < 0.5 ? w₁ : w₂
             # Test left-right symmetry
             t, wb = FiniteVolumes.run(backward_model, mesh, reverse(w₀); numerical_flux=s, settings...)
             @test all(wf .== reverse(wb))
+
         end
+
+        t, w_unstable = FiniteVolumes.run(forward_model, mesh, sine_w₀; cfl=1.5, nb_time_steps=5, verbose=false)
+        @test !maximum_principle(w_unstable, sine_w₀)
+    end
+
+    @testset "1D Burger" begin
+        grid = RegularMesh1D(0.0, 1.0, 100)
+        model = FiniteVolumes.AnonymousModel{1, 1, Float64}(u -> 0.5*u.^2)
+        on_step(i) = nb_cells(grid)/3 < i < 2*nb_cells(grid)/3
+        w₀ = [on_step(i) ? 1.0 : 0.0 for i in 1:nb_cells(grid)]
+        t, w = FiniteVolumes.run(model, grid, w₀, cfl=0.2, nb_time_steps=10, verbose=false)
+        @test maximum_principle(w, w₀)
     end
 
     @testset "2D linear advection" begin
@@ -80,6 +93,18 @@ riemann_problem(mesh, w₁, w₂) = [cell_center(mesh, i)[1] < 0.5 ? w₁ : w₂
             t, w = FiniteVolumes.run(model([1.0, 1.0]), grid, w₀; numerical_flux=s, settings...)
             @test maximum_principle(w, w₀)
         end
+    end
+
+    @testset "2D diagonal Burger" begin
+        #   ∂_t α + u₀ ⋅ ∇ α^2/2 = 0
+        # ⟺ ∂_t α + div(α^2/2 * u₀) = 0
+        # ≡ rotated 1D Burger
+        grid = RegularMesh2D(20, 20)
+        model = FiniteVolumes.AnonymousModel{1, 2, Float64}(α -> 0.5*α.^2 * [1.0, 1.0])
+        vertical_band(i) = 0.33 < cell_center(grid, i)[1]  < 0.66
+        w₀ = [vertical_band(i) ? 1.0 : 0.0 for i in 1:nb_cells(grid)]
+        t, w = FiniteVolumes.run(model, grid, w₀, cfl=0.2, nb_time_steps=10, verbose=false)
+        @test maximum_principle(w, w₀)
     end
 end
 
