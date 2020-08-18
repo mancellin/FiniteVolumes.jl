@@ -11,7 +11,7 @@ mesh = RegularMesh2D(40, 40)
 u(x, center=(0.5, 0.5)) = [-(x[2]-center[2]), (x[1]-center[1])]
 model = FiniteVolumes.AnonymousModel{1, 2, Float64, true}((α, x) -> α .* u(x)) 
 
-is_in_square(i, a=0.5) = all(0.5-a/2 .<= cell_center(mesh, i) .<= 0.5+a/2)
+is_in_square(i, side=0.5) = all(0.5-side/2 .<= cell_center(mesh, i) .<= 0.5+side/2)
 
 w₀ = [is_in_square(i) ? 1.0 : 0.0 for i in 1:nb_cells(mesh)]
 

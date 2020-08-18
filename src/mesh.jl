@@ -81,27 +81,15 @@ function cell_center(grid::AbstractRegularMesh2D, i_cell)
                        )
 end
 
-function face_center(grid::RegularMesh2D, i_face)
-    # Could be optimized?
-    if _is_inner_face(grid, i_face)
-        i_cell_1, i_cell_2 = cells_next_to_inner_face(grid, i_face)
-        return (cell_center(grid, i_cell_1) .+ cell_center(grid, i_cell_2))/2
+function face_center(grid::AbstractRegularMesh2D, i_face)
+    if grid isa PeriodicRegularMesh2D || _is_inner_face(grid, i_face)
+        i_cell, _ = cells_next_to_inner_face(grid, i_face)
     else
         i_cell = cell_next_to_boundary_face(grid, i_face)
-        if _is_on_bottom_edge(grid, i_face)
-            return cell_center(grid, i_cell) .- @SVector [0.0, dy(grid)/2]
-        elseif _is_on_top_edge(grid, i_face)
-            return cell_center(grid, i_cell) .+ @SVector [0.0, dy(grid)/2]
-        elseif _is_on_left_edge(grid, i_face)
-            return cell_center(grid, i_cell) .- @SVector [dx(grid)/2, 0.0]
-        elseif _is_on_right_edge(grid, i_face)
-            return cell_center(grid, i_cell) .+ @SVector [dx(grid)/2, 0.0]
-        else
-            error("Should not happen")
-        end
     end
+    return (cell_center(grid, i_cell) .+ 
+            rotation_matrix(grid, i_face) * @SVector [dx(grid)/2, dy(grid)/2])
 end
-face_center(grid::PeriodicRegularMesh2D, i_face) = error("Not implemented")
 
 # By convention, all the horizontal faces have even indices.
 _is_horizontal(i_face) = i_face % 2 == 0

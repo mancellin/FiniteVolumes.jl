@@ -95,6 +95,22 @@ riemann_problem(mesh, w₁, w₂) = [cell_center(mesh, i)[1] < 0.5 ? w₁ : w₂
         end
     end
 
+    @testset "2D rotation" begin
+        grid = RegularMesh2D(40, 40)
+        u(x, center=(0.5, 0.5)) = [-(x[2]-center[2]), (x[1]-center[1])]
+        model = FiniteVolumes.AnonymousModel{1, 2, Float64, true}((α, x) -> α .* u(x)) 
+
+        is_in_square(i, side=0.5) = all(0.5-side/2 .<= cell_center(grid, i) .<= 0.5+side/2)
+        w₀ = [is_in_square(i) ? 1.0 : 0.0 for i in 1:nb_cells(grid)]
+
+        schemes = [Upwind()]
+        settings = (cfl=0.1, nb_time_steps=5, verbose=false)
+        for s in schemes
+            t, w = FiniteVolumes.run(model, grid, w₀; numerical_flux=s, settings...)
+            @test maximum_principle(w, w₀)
+        end
+    end
+
     @testset "2D diagonal Burger" begin
         #   ∂_t α + u₀ ⋅ ∇ α^2/2 = 0
         # ⟺ ∂_t α + div(α^2/2 * u₀) = 0
