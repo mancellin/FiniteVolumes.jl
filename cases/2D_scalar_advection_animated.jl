@@ -4,8 +4,12 @@ using FiniteVolumes
 using Printf
 using Plots
 
-mesh = PeriodicRegularMesh2D(40, 40)
-model = directional_splitting(ScalarLinearAdvection([1.0, 1.0]))
+# mesh = PeriodicRegularMesh2D(40, 40)
+# model = directional_splitting(ScalarLinearAdvection([1.0, 1.0]))
+
+mesh = RegularMesh2D(40, 40)
+u(x, center=(0.5, 0.5)) = [-(x[2]-center[2]), (x[1]-center[1])]
+model = FiniteVolumes.AnonymousModel{1, 2, Float64, true}((α, x) -> α .* u(x)) 
 
 is_in_square(i, a=0.5) = all(0.5-a/2 .<= cell_center(mesh, i) .<= 0.5+a/2)
 
@@ -20,6 +24,6 @@ function plot_callback(i, t, w)
     end
 end
 
-FiniteVolumes.run(model, mesh, w₀, cfl=0.2, nb_time_steps=200, callback=plot_callback)
+t, w = FiniteVolumes.run(model, mesh, w₀, cfl=0.2, nb_time_steps=100, callback=plot_callback)
 
 gif(anim, "advection.gif")
