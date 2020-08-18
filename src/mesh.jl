@@ -87,10 +87,21 @@ function face_center(grid::RegularMesh2D, i_face)
         i_cell_1, i_cell_2 = cells_next_to_inner_face(grid, i_face)
         return (cell_center(grid, i_cell_1) .+ cell_center(grid, i_cell_2))/2
     else
-        nothing
+        i_cell = cell_next_to_boundary_face(grid, i_face)
+        if _is_on_bottom_edge(grid, i_face)
+            return cell_center(grid, i_cell) .- @SVector [0.0, dy(grid)/2]
+        elseif _is_on_top_edge(grid, i_face)
+            return cell_center(grid, i_cell) .+ @SVector [0.0, dy(grid)/2]
+        elseif _is_on_left_edge(grid, i_face)
+            return cell_center(grid, i_cell) .- @SVector [dx(grid)/2, 0.0]
+        elseif _is_on_right_edge(grid, i_face)
+            return cell_center(grid, i_cell) .+ @SVector [dx(grid)/2, 0.0]
+        else
+            error("Should not happen")
+        end
     end
 end
-face_center(grid::PeriodicRegularMesh2D, i_face) = nothing
+face_center(grid::PeriodicRegularMesh2D, i_face) = error("Not implemented")
 
 # By convention, all the horizontal faces have even indices.
 _is_horizontal(i_face) = i_face % 2 == 0
@@ -147,7 +158,23 @@ face_area(grid::AbstractRegularMesh2D, i_face)::Float64 = _is_horizontal(i_face)
 
 cell_volume(grid::AbstractRegularMesh2D, i_cell)::Float64 = dx(grid)*dy(grid)
 
-function rotation_matrix(grid::AbstractRegularMesh2D, i_face)
+function rotation_matrix(mesh::RegularMesh2D, i_face)
+    if _is_inner_face(mesh, i_face) || _is_on_top_edge(mesh, i_face) || _is_on_right_edge(mesh, i_face)
+        if _is_horizontal(i_face)
+            return SMatrix{2, 2, Float64}(0.0, 1.0, -1.0, 0.0)
+        else
+            return SMatrix{2, 2, Float64}(1.0, 0.0, 0.0, 1.0)
+        end
+    elseif _is_on_bottom_edge(mesh, i_face)
+        return SMatrix{2, 2, Float64}(0.0, -1.0, 1.0, 0.0)
+    elseif _is_on_left_edge(mesh, i_face)
+        return SMatrix{2, 2, Float64}(-1.0, 0.0, 0.0, -1.0)
+    else
+        error("This should not happen")
+    end
+end
+
+function rotation_matrix(grid::PeriodicRegularMesh2D, i_face)
     if _is_horizontal(i_face)
         return SMatrix{2, 2, Float64}(0.0, 1.0, -1.0, 0.0)
     else
