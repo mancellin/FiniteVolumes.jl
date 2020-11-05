@@ -1,7 +1,7 @@
 #!/usr/bin/env julia
 
 using FiniteVolumes
-using DifferentialEquations
+using OrdinaryDiffEq
 
 mesh = RegularMesh1D(0.0, 1.0, 100)
 model = ScalarLinearAdvection(1.0)
