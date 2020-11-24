@@ -18,6 +18,7 @@ _offset_j(::Stencil{NY, NX}) where {NX, NY} = (NX - 1) ÷ 2 + 1
 Base.eltype(s::Stencil{N, M, T}) where {N, M, T} = T
 Base.getindex(s::Stencil, i::Int) = getindex(s.data, i + _offset_i(s), 1)
 Base.getindex(s::Stencil, i::Int, j::Int) = getindex(s.data, i + _offset_i(s), j + _offset_j(s))
+Base.size(::Type{Stencil{N, M, T}}) where {N, M, T} = (N, M)
 Base.size(s::Stencil) = size(s.data)
 
 Base.map(f, s::Stencil{N, M}) where {N, M} = Stencil{N, M}(map(f, s.data))
