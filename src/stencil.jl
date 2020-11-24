@@ -1,3 +1,9 @@
+using StaticArrays
+import Base.transpose
+import Base.rot180
+import Base.rotl90
+import Base.rotr90
+
 struct Stencil{NY, NX, T}
     data::SMatrix{NY, NX, T}
 end
@@ -6,77 +12,93 @@ Stencil{N, M}(s) where {N, M} = Stencil{N, M, eltype(s)}(s)
 Stencil(s::SVector) = Stencil{length(s), 1, eltype(s)}(s)
 Stencil(s::AbstractMatrix) = Stencil(SMatrix{size(s)..., eltype(s)}(s...))
 
-offset_i(::Stencil{NY, NX}) where {NX, NY} = (NY - 1) ÷ 2 + 1
-offset_j(::Stencil{NY, NX}) where {NX, NY} = (NX - 1) ÷ 2 + 1
+_offset_i(::Stencil{NY, NX}) where {NX, NY} = (NY - 1) ÷ 2 + 1
+_offset_j(::Stencil{NY, NX}) where {NX, NY} = (NX - 1) ÷ 2 + 1
 
 Base.eltype(s::Stencil{N, M, T}) where {N, M, T} = T
-Base.getindex(s::Stencil, i::Int) = getindex(s.data, i + offset_i(s), 1)
-Base.getindex(s::Stencil, i::Int, j::Int) = getindex(s.data, i + offset_i(s), j + offset_j(s))
+Base.getindex(s::Stencil, i::Int) = getindex(s.data, i + _offset_i(s), 1)
+Base.getindex(s::Stencil, i::Int, j::Int) = getindex(s.data, i + _offset_i(s), j + _offset_j(s))
 Base.size(s::Stencil) = size(s.data)
 
 Base.map(f, s::Stencil{N, M}) where {N, M} = Stencil{N, M}(map(f, s.data))
 
-function Base.reverse(st::Stencil{3, 1})
-    return Stencil(SMatrix{3, 1, eltype(st)}(st[1, 0], st[0, 0], st[-1, 0]))
+@generated function Base.transpose(s::Stencil{N, N, T}) where {N, T}
+    indices = permutedims([(i, j) for i in 1:N, j in 1:N], (2, 1))
+    items = [:(s.data[$i, $j]) for (i, j) in indices]
+    quote
+        Stencil{$N, $N, $T}(SMatrix{$N, $N, $T}($(items...)))
+    end
 end
 
-function Base.rotr90(st::Stencil{3, 3})
-    return typeof(st)(
-                      @SMatrix [st[1, -1]  st[0, -1]  st[-1, -1];
-                                st[1, 0]   st[0, 0]   st[-1, 0];
-                                st[1, 1]   st[0, 1]   st[-1, 1]]
-                     )
+@generated function upsidedown(s::Stencil{N, N, T}) where {N, T}
+    indices = [(i, N-j+1) for i in 1:N, j in 1:N]
+    items = [:(s.data[$i, $j]) for (i, j) in indices]
+    quote
+        Stencil{$N, $N, $T}(SMatrix{$N, $N, $T}($(items...)))
+    end
 end
 
-function Base.rotl90(st::Stencil{3, 3})
-    return typeof(st)(
-                      @SMatrix [st[-1, 1]  st[0, 1]  st[1, 1];
-                                st[-1, 0]  st[0, 0]  st[1, 0];
-                                st[-1, -1] st[0, -1] st[1, -1]]
-                     )
+@generated function more_above(s::Stencil{N, N, T}) where {N, T}
+    below = [:(s.data[$i, $j]) for i in 1:N, j in 1:N if j < (N+1)/2]
+    above = [:(s.data[$i, $j]) for i in 1:N, j in 1:N if j > (N+1)/2]
+    quote
+        +($(above...)) > +($(below...))
+    end
 end
 
-function Base.rot180(st::Stencil{3, 3})
-    return typeof(st)(
-                      @SMatrix [st[1, 1]   st[1, 0]   st[1, -1];
-                                st[0, 1]   st[0, 0]   st[0, -1];
-                                st[-1, 1]  st[-1, 0]  st[-1, -1]]
-                     )
+@generated function more_below(s::Stencil{N, N, T}) where {N, T}
+    below = [:(s.data[$i, $j]) for i in 1:N, j in 1:N if j < (N+1)/2]
+    above = [:(s.data[$i, $j]) for i in 1:N, j in 1:N if j > (N+1)/2]
+    quote
+        +($(above...)) < +($(below...))
+    end
 end
 
-function Base.transpose(st::Stencil{3, 3})
-    return typeof(st)(
-                      @SMatrix [st[-1, -1]  st[0, -1]  st[1, -1];
-                                st[-1, 0]   st[0, 0]   st[1, 0];
-                                st[-1, 1]   st[0, 1]   st[1, 1]]
-                     )
+@generated function rightsideleft(s::Stencil{N, N, T}) where {N, T}
+    indices = [(N-i+1, j) for i in 1:N, j in 1:N]
+    items = [:(s.data[$i, $j]) for (i, j) in indices]
+    quote
+        Stencil{$N, $N, $T}(SMatrix{$N, $N, $T}($(items...)))
+    end
 end
 
-more_above(s::Stencil{3, 3}) = s[-1, 1] + s[0, 1] + s[1, 1] > s[-1, -1] + s[0, -1] + s[1, -1]
-more_below(s::Stencil{3, 3}) = s[-1, 1] + s[0, 1] + s[1, 1] < s[-1, -1] + s[0, -1] + s[1, -1]
-
-function upsidedown(st::Stencil{3, 3})
-    return typeof(st)(
-                      @SMatrix [st[-1, 1]  st[-1, 0]  st[-1, -1];
-                                st[0, 1]   st[0, 0]   st[0, -1];
-                                st[1, 1]   st[1, 0]   st[1, -1]]
-                     )
+@generated function more_on_the_right(s::Stencil{N, N, T}) where {N, T}
+    right = [:(s.data[$i, $j]) for i in 1:N, j in 1:N if i > (N+1)/2]
+    left = [:(s.data[$i, $j]) for i in 1:N, j in 1:N if i < (N+1)/2]
+    quote
+        +($(left...)) < +($(right...))
+    end
 end
 
-more_on_the_left(s::Stencil{3, 3}) = s[-1, -1] + s[-1, 0] + s[-1, 1] > s[1, -1] + s[1, 0] + s[1, 1]
-more_on_the_right(s::Stencil{3, 3}) = s[-1, -1] + s[-1, 0] + s[-1, 1] < s[1, -1] + s[1, 0] + s[1, 1]
+@generated function more_on_the_left(s::Stencil{N, N, T}) where {N, T}
+    right = [:(s.data[$i, $j]) for i in 1:N, j in 1:N if i > (N+1)/2]
+    left = [:(s.data[$i, $j]) for i in 1:N, j in 1:N if i < (N+1)/2]
+    quote
+        +($(left...)) > +($(right...))
+    end
+end
 
-function rightsideleft(st::Stencil{3, 3})
-    return typeof(st)(
-                            @SMatrix [st[1, -1]  st[1, 0]  st[1, 1];
-                                      st[0, -1]  st[0, 0]  st[0, 1];
-                                      st[-1, -1] st[-1, 0] st[-1, 1]]
-                           )
+for f in [:rotr90, :rotl90, :rot180]
+    eval(
+         quote
+             @generated function Base.$f(s::Stencil{N, N, T}) where {N, T}
+                 # Defines the function $f on Stencil.
+                 # At compile time, call the function from Base on an array of indices
+                 # and use the indices to compile a function on Stencils that does not call the function from Base.
+                 indices = $f([(i, j) for i in 1:N, j in 1:N])
+                 items = [:(s.data[$i, $j]) for (i, j) in indices]
+                 quote
+                     Stencil{$N, $N, $T}(SMatrix{$N, $N, $T}($(items...)))
+                 end
+             end
+         end
+        )
 end
 
 more_than_half_full(s::Stencil{3, 3}) = sum(s.data)/length(s.data) > 0.5
 more_than_half_empty(s::Stencil{3, 3}) = sum(s.data)/length(s.data) < 0.5
 invert(s::Stencil) =  typeof(s)(1.0 .- s.data)
+
 
 ###################
 #  RegularMesh1D  #
@@ -86,6 +108,10 @@ function Stencil(grid::RegularMesh1D, i_cell)
     left_cell = i_cell == 1 ? 1 : i_cell - 1
     right_cell = i_cell == nb_cells(grid) ? nb_cells(grid) : i_cell + 1
     return Stencil(SVector{3, Int}(left_cell, i_cell, right_cell))
+end
+
+function Base.reverse(st::Stencil{3, 1})
+    return Stencil(SMatrix{3, 1, eltype(st)}(st[1, 0], st[0, 0], st[-1, 0]))
 end
 
 function oriented_stencil(mesh::RegularMesh1D, i_cell, i_face)
