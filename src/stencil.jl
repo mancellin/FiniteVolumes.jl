@@ -21,6 +21,8 @@ Base.getindex(s::Stencil, i::Int, j::Int) = getindex(s.data, i + _offset_i(s), j
 Base.size(::Type{Stencil{N, M, T}}) where {N, M, T} = (N, M)
 Base.size(s::Stencil) = size(s.data)
 
+stencil_radiuses(::Stencil{N, M, T}) where {N, M, T} = ((M-1) ÷ 2, (N-1) ÷ 2)
+
 Base.map(f, s::Stencil{N, M}) where {N, M} = Stencil{N, M}(map(f, s.data))
 
 @generated function Base.transpose(s::Stencil{N, N, T}) where {N, T}
@@ -183,8 +185,8 @@ function Stencil(grid::AbstractRegularMesh2D, i_cell, stencil_radius=1)
 end
 
 """Stencil centered in i_cell, such that i_face is on the right."""
-function oriented_stencil(mesh::AbstractRegularMesh2D, i_cell, i_face)
-    st = Stencil(mesh, i_cell)
+function oriented_stencil(mesh::AbstractRegularMesh2D, i_cell, i_face, stencil_radius=1)
+    st = Stencil(mesh, i_cell, stencil_radius)
     if _is_horizontal(i_face) && i_cell == cells_next_to_inner_face(mesh, i_face)[1]
         st = rotr90(st)
     elseif _is_horizontal(i_face) && i_cell == cells_next_to_inner_face(mesh, i_face)[2]
