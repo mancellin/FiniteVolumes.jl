@@ -29,7 +29,7 @@ export NumericalFlux, Upwind
 include("./reconstruction.jl")
 export Muscl, minmod, superbee, ultrabee, all_cells, no_cell
 export VOF, LagoutiereDownwind
-export Hybrid
+export Hybrid, InMixedCells
 
 include("./plot_recipes.jl")
 

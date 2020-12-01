@@ -78,6 +78,10 @@ end
     w = rand(3)
     flux = Hybrid(no_cell, Muscl(limiter=minmod), Upwind())
     @test flux(from_left, grid, w, 3) == Upwind()(from_left, grid, w, 3)
+
+    flux = Hybrid(InMixedCells(0.0), Muscl(limiter=minmod), Upwind())
+    @test flux(from_left, grid, w, 3) == Upwind()(from_left, grid, w, 3)
+    @test string(flux) == "Hybrid(InMixedCells(0.0), Muscl(minmod), Upwind())"
 end
 
 

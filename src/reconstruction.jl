@@ -1,3 +1,5 @@
+import Base.print
+
 ################################################################################
 #                            Scalar reconstruction                             #
 ################################################################################
@@ -58,6 +60,8 @@ function (s::Muscl)(model::ScalarLinearAdvection, mesh, w, i_face; dt=0.0)
     return eltype(w)(u * rere_w)
 end
 
+Base.print(io::IO, m::Muscl) = print(io, "Muscl($(m.limiter))")
+
 #########
 #  VOF  #
 #########
@@ -75,6 +79,8 @@ function (s::VOF)(model::ScalarLinearAdvection, mesh, w, i_face; dt=0.0)
         return eltype(w)(u * α_flux)
     end
 end
+
+Base.print(io::IO, s::VOF) = print(io, "VOF(method=$(s.method))")
 
 
 ########################
@@ -152,3 +158,19 @@ function (s::Hybrid)(args...; kwargs...)
     end
 end
 
+Base.print(io::IO, c::Hybrid) = print(io, "Hybrid($(c.condition), $(c.flux_true), $(c.flux_false))")
+
+# Example of conditions for scalar advection
+struct InMixedCells{T}
+    threshold::T
+end
+
+function (c::InMixedCells)(model::ScalarLinearAdvection{1}, mesh, w, i_face; dt=nothing)
+    c.threshold <= w[FiniteVolumes.upwind_cell(model, mesh, i_face)[2]][1] <= (1.0-c.threshold)
+end
+
+function (c::InMixedCells)(model::ScalarLinearAdvection, mesh, w, i_face; dt=nothing)
+    any(c.threshold .<= w[FiniteVolumes.upwind_cell(model, mesh, i_face)[2]] .<= (1.0-c.threshold))
+end
+
+Base.print(io::IO, c::InMixedCells) = print(io, "InMixedCells($(c.threshold))")
