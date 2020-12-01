@@ -129,40 +129,60 @@ end
 #  RegularMesh2D  #
 ###################
 
-function Stencil(grid::AbstractRegularMesh2D, i_cell)
+function _right_cell(grid::AbstractRegularMesh2D, i_cell)
 	if i_cell % grid.nx == 0  # Last cell at the end of a row
         if grid isa PeriodicRegularMesh2D
-            right_cell = i_cell + 1 - grid.nx
+            return i_cell + 1 - grid.nx
         else
-            right_cell = i_cell  # "Neumann" stencil
+            return i_cell  # "Neumann" stencil
         end
 	else  # General case
-		right_cell = i_cell + 1
+		return i_cell + 1
 	end
-
-	if i_cell % grid.nx == 1  # First cell at the beggining of a row
-        if grid isa PeriodicRegularMesh2D
-            left_cell = i_cell - 1 + grid.nx
-        else
-            left_cell = i_cell
-        end
-	else
-		left_cell = i_cell - 1
-	end
-
-	stencil = @SMatrix [left_cell-grid.nx   left_cell    left_cell+grid.nx;
-						i_cell-grid.nx      i_cell       i_cell+grid.nx;
-                        right_cell-grid.nx  right_cell   right_cell+grid.nx]
-
-    if grid isa PeriodicRegularMesh2D
-	    stencil = (s -> mod(s, Base.OneTo(nb_cells(grid)))).(stencil)
-    else
-        stencil = (s -> s < 1 ? s + grid.nx : (s > nb_cells(grid) ? s - grid.nx : s)).(stencil)
-    end
-
-    return Stencil(stencil)
 end
 
+function _left_cell(grid::AbstractRegularMesh2D, i_cell)
+	if i_cell % grid.nx == 1  # First cell at the beggining of a row
+        if grid isa PeriodicRegularMesh2D
+            return i_cell - 1 + grid.nx
+        else
+            return i_cell
+        end
+	else
+		return i_cell - 1
+	end
+end
+
+_above_cell(grid::RegularMesh2D, i_cell) = i_cell + grid.nx <= nb_cells(grid) ? i_cell + grid.nx : i_cell
+_below_cell(grid::RegularMesh2D, i_cell) = i_cell - grid.nx >= 1 ? i_cell - grid.nx : i_cell
+
+_above_cell(grid::PeriodicRegularMesh2D, i_cell) = mod(i_cell+grid.nx, Base.OneTo(nb_cells(grid)))
+_below_cell(grid::PeriodicRegularMesh2D, i_cell) = mod(i_cell-grid.nx, Base.OneTo(nb_cells(grid)))
+
+
+function Stencil(grid::AbstractRegularMesh2D, i_cell, stencil_radius=1)
+    left = _left_cell(grid, i_cell)
+    right = _right_cell(grid, i_cell)
+    if stencil_radius == 1
+        stencil = @SMatrix [_below_cell(grid, left)   left    _above_cell(grid, left);
+                            _below_cell(grid, i_cell) i_cell  _above_cell(grid, i_cell);
+                            _below_cell(grid, right)  right   _above_cell(grid, right)]
+        return Stencil(stencil)
+    elseif stencil_radius == 2
+        leftleft = _left_cell(grid, left)
+        rightright = _right_cell(grid, right)
+        stencil = @SMatrix [_below_cell(grid, _below_cell(grid, leftleft))   _below_cell(grid, leftleft)   leftleft   _above_cell(grid, leftleft)   _above_cell(grid, _above_cell(grid, leftleft));
+                            _below_cell(grid, _below_cell(grid, left))       _below_cell(grid, left)       left       _above_cell(grid, left)       _above_cell(grid, _above_cell(grid, left));
+                            _below_cell(grid, _below_cell(grid, i_cell))     _below_cell(grid, i_cell)     i_cell     _above_cell(grid, i_cell)     _above_cell(grid, _above_cell(grid, i_cell));
+                            _below_cell(grid, _below_cell(grid, right))      _below_cell(grid, right)      right      _above_cell(grid, right)      _above_cell(grid, _above_cell(grid, right));
+                            _below_cell(grid, _below_cell(grid, rightright)) _below_cell(grid, rightright) rightright _above_cell(grid, rightright) _above_cell(grid, _above_cell(grid, rightright))]
+        return Stencil(stencil)
+    else
+        error("Not implemented: stencil_radius=$stencil_radius")
+    end
+end
+
+"""Stencil centered in i_cell, such that i_face is on the right."""
 function oriented_stencil(mesh::AbstractRegularMesh2D, i_cell, i_face)
     st = Stencil(mesh, i_cell)
     if _is_horizontal(i_face) && i_cell == cells_next_to_inner_face(mesh, i_face)[1]

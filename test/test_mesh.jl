@@ -107,6 +107,13 @@ using FiniteVolumes
         @test st[1, 0] == 1
         @test st[1, 1] == 4
 
+        stencil_radius = 2
+        st = Stencil(grid, 5, stencil_radius)
+        @test st[-1, -1] == 1
+        @test st[-2, -1] == 3
+        @test st[-2, -2] == 9
+        @test st[1, 1] == 9
+        @test st[2, 2] == 1
     end
 
     @testset "Gradients" begin
