@@ -1,6 +1,8 @@
 
 abstract type FiniteVolumeMesh end
 
+cell_centers(m::FiniteVolumeMesh) = [cell_center(m, i) for i in 1:nb_cells(m)]
+
 ################################################################################
 #                                      1D                                      #
 ################################################################################

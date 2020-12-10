@@ -19,7 +19,7 @@ total_gas_mass(mesh, w) = sum(w[i][:ρ] * w[i][:ξ] * FiniteVolumes.cell_volume(
 mass_conservation(mesh, w, w₀) = (total_mass(mesh, w) == total_mass(mesh, w₀) && 
                                   total_gas_mass(mesh, w) == total_gas_mass(mesh, w₀))
 
-riemann_problem(mesh, w₁, w₂) = [cell_center(mesh, i)[1] < 0.5 ? w₁ : w₂ for i in 1:nb_cells(mesh)]
+riemann_problem(mesh, w₁, w₂) = [x[1] < 0.5 ? w₁ : w₂ for x in cell_centers(mesh)]
 
 @testset "Cases" begin
 
@@ -43,7 +43,7 @@ riemann_problem(mesh, w₁, w₂) = [cell_center(mesh, i)[1] < 0.5 ? w₁ : w₂
     @testset "1D linear advection" begin
         mesh = RegularMesh1D(0.0, 1.0, 100)
 
-        sine_w₀ = [sin(cell_center(mesh, i)[1]) for i in 1:nb_cells(mesh)]
+        sine_w₀ = map(x -> sin(x[1]), cell_centers(mesh))
         falling_step_w₀ = riemann_problem(mesh, 1.0, 0.0)
         rising_step_w₀ = riemann_problem(mesh, 0.0, 1.0)
         initial_conditions = [sine_w₀, falling_step_w₀, rising_step_w₀]
@@ -83,8 +83,8 @@ riemann_problem(mesh, w₁, w₂) = [cell_center(mesh, i)[1] < 0.5 ? w₁ : w₂
         grid = PeriodicRegularMesh2D(20, 20)
         model(u₀) = directional_splitting(ScalarLinearAdvection(u₀))
 
-        is_in_square(i, side=0.5) = all(0.5-side/2 .<= cell_center(grid, i) .<= 0.5+side/2)
-        w₀ = [is_in_square(i) ? 1.0 : 0.0 for i in 1:nb_cells(grid)]
+        square(x, side=0.5) = all(0.5-side/2 .<= x .<= 0.5+side/2) ? 1.0 : 0.0
+        w₀ = map(square, cell_centers(grid))
 
         settings = (cfl=0.1, nb_time_steps=5, verbose=false)
 
@@ -100,8 +100,8 @@ riemann_problem(mesh, w₁, w₂) = [cell_center(mesh, i)[1] < 0.5 ? w₁ : w₂
         u(x, center=(0.5, 0.5)) = [-(x[2]-center[2]), (x[1]-center[1])]
         model = FiniteVolumes.AnonymousModel{Float64, 2, true}((α, x) -> α .* u(x)) 
 
-        is_in_square(i, side=0.5) = all(0.5-side/2 .<= cell_center(grid, i) .<= 0.5+side/2)
-        w₀ = [is_in_square(i) ? 1.0 : 0.0 for i in 1:nb_cells(grid)]
+        square(x, side=0.5) = all(0.5-side/2 .<= x .<= 0.5+side/2) ? 1.0 : 0.0
+        w₀ = map(square, cell_centers(grid))
 
         schemes = [Upwind()]
         settings = (cfl=0.1, nb_time_steps=5, verbose=false)
@@ -117,8 +117,8 @@ riemann_problem(mesh, w₁, w₂) = [cell_center(mesh, i)[1] < 0.5 ? w₁ : w₂
         # ≡ rotated 1D Burger
         grid = RegularMesh2D(20, 20)
         model = FiniteVolumes.AnonymousModel{Float64, 2}(α -> 0.5*α.^2 * [1.0, 1.0])
-        vertical_band(i) = 0.33 < cell_center(grid, i)[1] < 0.66
-        w₀ = [vertical_band(i) ? 1.0 : 0.0 for i in 1:nb_cells(grid)]
+        vertical_band(x) = 0.33 < x[1] < 0.66 ? 1.0 : 0.0
+        w₀ = map(vertical_band, cell_centers(grid))
         t, w = FiniteVolumes.run(model, grid, w₀, cfl=0.2, nb_time_steps=10, verbose=false)
         @test maximum_principle(w, w₀)
     end
@@ -129,16 +129,16 @@ end
         grid = PeriodicRegularMesh2D(-1.0, 1.0, 20, -1.0, 1.0, 20)
         model = directional_splitting(ScalarLinearAdvection(3, [1.0, 1.0]))
 
-        function triple_point(i)
-            if cell_center(grid, i)[1] < 0.0
-                return (1.0, 0.0, 0.0)
-            elseif cell_center(grid, i)[2] < 0.0
-                return (0.0, 1.0, 0.0)
+        function triple_point(x)
+            if x[1] < 0.0
+                return SVector(1.0, 0.0, 0.0)
+            elseif x[2] < 0.0
+                return SVector(0.0, 1.0, 0.0)
             else
-                return (0.0, 0.0, 1.0)
+                return SVector(0.0, 0.0, 1.0)
             end
         end
-        w₀ = [SVector(triple_point(i)...) for i in 1:nb_cells(grid)]
+        w₀ = map(triple_point, cell_centers(grid))
 
         settings = (cfl=0.2, nb_time_steps=10, verbose=false)
 
@@ -190,10 +190,10 @@ end
         grid = RegularMesh1D(0.0, 1.0, 100)
         model = IsothermalTwoFluidEuler{nb_dims(grid)}(300.0, 1.0, 1500.0, 1000.0, 1e5)
 
-        ξ₀(i) = 0.2 < cell_center(grid, i)[1] < 0.5 ? 0.0 : 1.0
+        ξ₀(x) = 0.2 < x[1] < 0.5 ? 0.0 : 1.0
 
         for u in [-1000.0, -10.0, 0.0, 10.0, 1000.0]
-            w₀ = [full_state(model, p=1e5, u=u, ξ=ξ₀(i)) for i in 1:nb_cells(grid)]
+            w₀ = [full_state(model, p=1e5, u=u, ξ=ξ₀(x)) for x in cell_centers(grid)]
             t, w = FiniteVolumes.run(model, grid, w₀, cfl=0.4, nb_time_steps=20, verbose=false)
             @test maximum_principle(w, w₀, :ξ)
             @test boundedness(w, 0.0, 1.0, :α)
@@ -207,11 +207,11 @@ end
         grid = PeriodicRegularMesh2D(20, 20)
         model = IsothermalTwoFluidEuler{nb_dims(grid)}(300.0, 1.0, 1500.0, 1000.0, 1e5)
 
-        is_in_disk(i) = norm([0.5, 0.5] - cell_center(grid, i)) < 0.3
-        ξ₀(i) = (is_in_disk(i) ? 0.0 : 1.0)
+        is_in_disk(x) = norm([0.5, 0.5] - x) < 0.3
+        ξ₀(x) = is_in_disk(x) ? 0.0 : 1.0
 
         for ux in [-10.0, 0.0, 10.0], uy in [-10.0, 0.0, 10.0]
-            w₀ = [full_state(model, p=1e5, ux=ux, uy=uy, ξ=ξ₀(i)) for i in 1:nb_cells(grid)]
+            w₀ = [full_state(model, p=1e5, ux=ux, uy=uy, ξ=ξ₀(x)) for x in cell_centers(grid)]
             t, w = FiniteVolumes.run(model, grid, w₀, cfl=0.3, nb_time_steps=20, verbose=false)
             @test maximum_principle(w, w₀, :ξ)
             @test boundedness(w, 0.0, 1.0, :α)

@@ -5,7 +5,7 @@ using FiniteVolumes
 grid = RegularMesh1D(0.0, 1.0, 100)
 model = ScalarLinearAdvection(1.0)
 
-w₀ = [i < nb_cells(grid)/2 ? 1.0 : 0.0 for i in 1:nb_cells(grid)]
+w₀ = map(x -> x[1] < 0.5 ? 1.0 : 0.0, cell_centers(grid))
 
 t_final, w = FiniteVolumes.run(model, grid, w₀, cfl=0.2, nb_time_steps=100)
 
