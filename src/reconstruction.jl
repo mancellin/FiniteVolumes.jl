@@ -63,7 +63,7 @@ function (s::Muscl)(model::ScalarLinearAdvection, mesh, w, i_face; dt=0.0)
     if isnothing(dt)
         β = nothing
     else
-        β = dt*u/Δx
+        β = dt*abs(u)/Δx
     end
     grad_w::eltype(w) = s.limiter.(wst[0] - wst[-1], wst[1] - wst[0], β)
     re_w::eltype(w) = wst[0] .+ 0.5 * grad_w
@@ -92,7 +92,7 @@ function (s::VOF{NX, NY})(model::ScalarLinearAdvection, mesh, w, i_face; dt=0.0)
     if abs(u) < 1e-10
         return zero(eltype(w))
     else
-        α_flux = s.method(wst, dt*u/Δx)
+        α_flux = s.method(wst, dt*abs(u)/Δx)
         return eltype(w)(u * α_flux)
     end
 end
@@ -121,7 +121,7 @@ function (s::LagoutiereDownwind)(model::ScalarLinearAdvection{1, T, D}, mesh, w,
     if abs(u) < 1e-10
         return zero(eltype(w))
     else
-        borneinf, bornesup = stability_range(wst, dt*u/Δx)
+        borneinf, bornesup = stability_range(wst, dt*abs(u)/Δx)
         α_flux = cut_in_range(borneinf, bornesup, wst[1])
         return eltype(w)(u * α_flux)
     end
@@ -136,7 +136,7 @@ function (s::LagoutiereDownwind)(model::ScalarLinearAdvection{N, T, D}, mesh, w,
         borneinf = @MVector zeros(nb_vars(model))
         for i in 1:nb_vars(model)
             wi = map(x -> x[i], wst)
-            borneinf[i], bornesup[i] = stability_range(wi, dt*u/Δx)
+            borneinf[i], bornesup[i] = stability_range(wi, dt*abs(u)/Δx)
         end
 
         α_flux = @MVector zeros(nb_vars(model))
