@@ -72,7 +72,7 @@ riemann_problem(mesh, w₁, w₂) = [cell_center(mesh, i)[1] < 0.5 ? w₁ : w₂
 
     @testset "1D Burger" begin
         grid = RegularMesh1D(0.0, 1.0, 100)
-        model = FiniteVolumes.AnonymousModel{1, 1, Float64}(u -> 0.5*u.^2)
+        model = FiniteVolumes.AnonymousModel{Float64, 1}(u -> 0.5*u.^2)
         on_step(i) = nb_cells(grid)/3 < i < 2*nb_cells(grid)/3
         w₀ = [on_step(i) ? 1.0 : 0.0 for i in 1:nb_cells(grid)]
         t, w = FiniteVolumes.run(model, grid, w₀, cfl=0.2, nb_time_steps=10, verbose=false)
@@ -98,7 +98,7 @@ riemann_problem(mesh, w₁, w₂) = [cell_center(mesh, i)[1] < 0.5 ? w₁ : w₂
     @testset "2D rotation" begin
         grid = RegularMesh2D(40, 40)
         u(x, center=(0.5, 0.5)) = [-(x[2]-center[2]), (x[1]-center[1])]
-        model = FiniteVolumes.AnonymousModel{1, 2, Float64, true}((α, x) -> α .* u(x)) 
+        model = FiniteVolumes.AnonymousModel{Float64, 2, true}((α, x) -> α .* u(x)) 
 
         is_in_square(i, side=0.5) = all(0.5-side/2 .<= cell_center(grid, i) .<= 0.5+side/2)
         w₀ = [is_in_square(i) ? 1.0 : 0.0 for i in 1:nb_cells(grid)]
@@ -116,8 +116,8 @@ riemann_problem(mesh, w₁, w₂) = [cell_center(mesh, i)[1] < 0.5 ? w₁ : w₂
         # ⟺ ∂_t α + div(α^2/2 * u₀) = 0
         # ≡ rotated 1D Burger
         grid = RegularMesh2D(20, 20)
-        model = FiniteVolumes.AnonymousModel{1, 2, Float64}(α -> 0.5*α.^2 * [1.0, 1.0])
-        vertical_band(i) = 0.33 < cell_center(grid, i)[1]  < 0.66
+        model = FiniteVolumes.AnonymousModel{Float64, 2}(α -> 0.5*α.^2 * [1.0, 1.0])
+        vertical_band(i) = 0.33 < cell_center(grid, i)[1] < 0.66
         w₀ = [vertical_band(i) ? 1.0 : 0.0 for i in 1:nb_cells(grid)]
         t, w = FiniteVolumes.run(model, grid, w₀, cfl=0.2, nb_time_steps=10, verbose=false)
         @test maximum_principle(w, w₀)

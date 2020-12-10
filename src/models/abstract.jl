@@ -38,3 +38,9 @@ jacobian(m::AbstractModel, w) = ForwardDiff.jacobian(v -> normal_flux(m, invert_
 eigenvalues(m::AbstractModel, w) = jacobian(m, w) |> Array |> eigvals
 right_eigenvectors(m::AbstractModel, w) = jacobian(m, w) |> Array |> eigen |> e -> e.vectors
 left_eigenvectors(m::AbstractModel, w) = right_eigenvectors(m, w) |> inv
+
+# Better support for scalar model encoded as Floats
+jacobian(m::AbstractModel, w::Number) where {T} = ForwardDiff.derivative(w -> normal_flux(m, w), w)
+eigenvalues(m::AbstractModel, w::Number) where {T} = jacobian(m, w)
+left_eigenvectors(m::AbstractModel, w::Number) where {T} = 1.0
+right_eigenvectors(m::AbstractModel, w::Number) where {T} = 1.0

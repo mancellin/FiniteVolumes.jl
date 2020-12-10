@@ -1,5 +1,4 @@
 using LinearAlgebra: norm
-using ProgressMeter: @showprogress
 using FiniteVolumes
 using Printf
 using Plots
@@ -9,7 +8,7 @@ using Plots
 
 mesh = RegularMesh2D(40, 40)
 u(x, center=(0.5, 0.5)) = [-(x[2]-center[2]), (x[1]-center[1])]
-model = FiniteVolumes.AnonymousModel{1, 2, Float64, true}((α, x) -> α .* u(x)) 
+model = FiniteVolumes.AnonymousModel{Float64, 2, true}((α, x) -> α .* u(x)) 
 
 is_in_square(i, side=0.5) = all(0.5-side/2 .<= cell_center(mesh, i) .<= 0.5+side/2)
 
@@ -24,6 +23,9 @@ function plot_callback(i, t, w)
     end
 end
 
-t, w = FiniteVolumes.run(model, mesh, w₀, cfl=0.2, nb_time_steps=100, callback=plot_callback)
+t, w = FiniteVolumes.run(directional_splitting(model), mesh, w₀, cfl=0.2, nb_time_steps=100,
+                         callback=plot_callback)
+                        # )
+# plot(mesh, w, 1, clims=(0, 1))
 
 gif(anim, "advection.gif")

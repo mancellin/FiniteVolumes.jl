@@ -1,33 +1,40 @@
 # Anonymous = only defined by a flux function
 
-struct AnonymousModel{N, D, T, S} <: AbstractModel
-    flux::Function
+struct AnonymousModel{T, D, S} <: AbstractModel
+    flux::Function # si S: (T, SVector{D}) → T, sinon: T → T
 end
-AnonymousModel{N, D, T}(f) where {N, D, T} = AnonymousModel{N, D, T, false}(f)
-AnonymousModel{N, D}(f) where {N, D} = AnonymousModel{N, D, Float64}(f)
+AnonymousModel{T, D}(f) where {T, D} = AnonymousModel{T, D, false}(f)
 
-nb_vars(m::AnonymousModel{N}) where N = N
-nb_dims(m::AnonymousModel{N, D}) where {N, D} = D
-Base.eltype(m::AnonymousModel{N, D, T}) where {N, D, T} = T
-is_space_dependant(m::AnonymousModel{N, D, T, S}) where {N, D, T, S} = S
+Base.eltype(::AnonymousModel{T}) where {T} = T
+nb_dims(::AnonymousModel{T, D}) where {T, D} = D
+is_space_dependant(::AnonymousModel{T, D, S}) where {T, D, S} = S
 
-w_names(m::AnonymousModel{1}) = (:u,)
-w_names(m::AnonymousModel{N}) where N = Tuple(Symbol("u_$i") for i in 1:N)
-
-function rotate_model(m::AnonymousModel{N, D, T, S}, rotation_matrix, position=nothing) where {N, D, T, S}
-    fx_at_face = u -> is_space_dependant(m) ? m.flux(u, position) : m.flux(u)
-    if D == 1
-        fx = u -> rotation_matrix[1, 1] .* fx_at_face(u)
-    elseif D > 1
-        fx = u -> (rotation_matrix' * fx_at_face(u))[1]
+function directional_splitting(m::AnonymousModel{T, 2, S}) where {T, S}
+    if !is_space_dependant(m)
+        horizontal_flux = u -> [m.flux(u)[1], zero(T)]
+        vertical_flux = u -> [zero(T), m.flux(u)[2]]
+    else
+        horizontal_flux = (u, x) -> [m.flux(u, x)[1], zero(T)]
+        vertical_flux = (u, x) -> [zero(T), m.flux(u, x)[2]]
     end
-    AnonymousModel{N, 1, T, S}(fx)
+    return [AnonymousModel{T, 2, S}(horizontal_flux),
+            AnonymousModel{T, 2, S}(vertical_flux)]
 end
 
-normal_flux(m::AnonymousModel{N, 1, T}, w) where {N, T} = m.flux(w)
+function rotate_model(m::AnonymousModel{T, D, S}, rotation_matrix, position=nothing) where {T, D, S}
+    if !is_space_dependant(m)
+        fx_at_face = u -> m.flux(u)
+    else
+        fx_at_face = u -> m.flux(u, position)
+    end
+    if D == 1
+        # Need a special case so that the 2-scalars model u -> [u[1], u[2]]
+        # is not interpreted as a 2D flux in 1D.
+        local_flux = u -> rotation_matrix[1, 1] * fx_at_face(u)
+    else
+        local_flux = u -> (rotation_matrix' * fx_at_face(u))[1]
+    end
+    AnonymousModel{T, 1, S}(local_flux)
+end
 
-# Support for Float instead of single-element SVector
-jacobian(m::AnonymousModel{1, 1, T}, w::Number) where {T} = ForwardDiff.derivative(w -> normal_flux(m, w), w)
-eigenvalues(m::AnonymousModel{1, 1, T}, w::Number) where {T} = jacobian(m, w)
-left_eigenvectors(m::AnonymousModel{1, 1, T}, w::Number) where {T} = 1.0
-right_eigenvectors(m::AnonymousModel{1, 1, T}, w::Number) where {T} = 1.0
+normal_flux(m::AnonymousModel{T, 1}, w) where {T} = m.flux(w)
