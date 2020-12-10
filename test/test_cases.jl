@@ -21,6 +21,7 @@ mass_conservation(mesh, w, w₀) = (total_mass(mesh, w) == total_mass(mesh, w₀
 
 riemann_problem(mesh, w₁, w₂) = [cell_center(mesh, i)[1] < 0.5 ? w₁ : w₂ for i in 1:nb_cells(mesh)]
 
+@testset "Cases" begin
 
 @testset "Scalar problems" begin
     @testset "Trivial cases" begin
@@ -50,8 +51,7 @@ riemann_problem(mesh, w₁, w₂) = [cell_center(mesh, i)[1] < 0.5 ? w₁ : w₂
         forward_model = ScalarLinearAdvection(1.0)
         backward_model = ScalarLinearAdvection(-1.0)
 
-        schemes = [Upwind(), Muscl(limiter=minmod)]
-        # TODO: bug in Muscl(limiter=ultrabee) for negative velocities
+        schemes = [Upwind(), Muscl(limiter=minmod), Muscl(limiter=ultrabee)]
 
         settings = (cfl=0.1, nb_time_steps=5, verbose=false)
 
@@ -221,5 +221,7 @@ end
             @test w[50][:p] ≈ 1e5
         end
     end
+
+end
 
 end

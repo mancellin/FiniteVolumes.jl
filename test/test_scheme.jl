@@ -4,6 +4,8 @@ using Test
 using StaticArrays
 using FiniteVolumes
 
+@testset "Schemes" begin
+
 @testset "Scalar upwind" begin
     flux = Upwind()
 
@@ -74,8 +76,8 @@ end
     @test flux(from_right, grid, [0.0, 0.0, 1.0], 2) == 0.0
     @test flux(from_right, grid, [0.0, 1.0, 1.0], 2) == -1.0
 
-    # Flagging no cells
-    w = rand(3)
+    # Hybrid with no cells
+    w = 0.98*rand(3) .+ 0.01
     flux = Hybrid(no_cell, Muscl(limiter=minmod), Upwind())
     @test flux(from_left, grid, w, 3) == Upwind()(from_left, grid, w, 3)
 
@@ -97,7 +99,7 @@ end
     @test flux(from_left, grid, [0.0, 1.0, 1.0], 3, dt=0.2) == 1.0
 
     from_right = ScalarLinearAdvection(-1.0)
-    @test flux(from_right, grid, [0.0, 0.5, 1.0], 2, dt=0.2) == -0.5
+    @test flux(from_right, grid, [0.0, 0.5, 1.0], 2, dt=0.2) == 0.0
     @test flux(from_right, grid, [0.0, 0.0, 1.0], 2, dt=0.2) == 0.0
     @test flux(from_right, grid, [0.0, 1.0, 1.0], 2, dt=0.2) == -1.0
 
@@ -129,4 +131,6 @@ end
     @test downwind_vof(bottom_right, grid, w, 7) == -0.4
     @test downwind_vof(bottom_right, grid, w, 9) == -0.5
     @test downwind_vof(bottom_right, grid, w, 10) == -0.5
+end
+
 end
