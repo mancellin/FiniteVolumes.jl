@@ -10,17 +10,19 @@ function upwind_cell(model::ScalarLinearAdvection, mesh, i_face)
     return local_velocity, up_cell
 end
 
-function upwind_stencil(model, mesh::RegularMesh1D, w, i_face, N)
+_distance_to_parallel_face(mesh::RegularMesh1D, i_face) = dx(mesh)
+_distance_to_parallel_face(mesh::AbstractRegularMesh2D, i_face) = _is_horizontal(i_face) ? dy(mesh) : dx(mesh)
+
+function upwind_stencil(model, mesh, w, i_face, ::Val{N}) where N
     u, i_cell = upwind_cell(model, mesh, i_face)
-    st = Stencil{N, 1}(mesh, i_cell, i_face)
-    return u, w[st], dx(mesh)
+    local_st = Stencil{N, 1}(mesh, i_cell, i_face)
+    return u, w[local_st], _distance_to_parallel_face(mesh, i_face)
 end
 
-function upwind_stencil(model, mesh::AbstractRegularMesh2D, w, i_face, N, M=1)
+function upwind_stencil(model, mesh, w, i_face, ::Val{N}, ::Val{M}) where {N, M}
     u, i_cell = upwind_cell(model, mesh, i_face)
-    st = Stencil{N, M}(mesh, i_cell, i_face)
-    Δx = _is_horizontal(i_face) ? dy(mesh) : dx(mesh)
-    return u, w[st], Δx
+    local_st = Stencil{N, M}(mesh, i_cell, i_face)
+    return u, w[local_st], _distance_to_parallel_face(mesh, i_face)
 end
 
 ###########
@@ -39,16 +41,16 @@ superbee(a, b, β) = a*b <= 0 ? 0.0 : (a >= 0 ? max(min(2*a, b), min(a, 2*b)) : 
 ultrabee(a, b, β) = a*b <= 0 ? 0.0 : (a >= 0 ? 2*max(0.0, min((1/β-1)*a, b)) : -ultrabee(-a, -b, β))
 
 function (s::Muscl)(model::ScalarLinearAdvection, mesh, w, i_face; dt=0.0)
-    u, wst, Δx = upwind_stencil(model, mesh, w, i_face, 3)
+    u, wst, Δx = upwind_stencil(model, mesh, w, i_face, Val(3))
     if isnothing(dt)
         β = nothing
     else
         β = dt*abs(u)/Δx
     end
-    grad_w::eltype(w) = s.limiter.(wst[0] - wst[-1], wst[1] - wst[0], β)
-    re_w::eltype(w) = wst[0] .+ 0.5 * grad_w
-    rere_w::eltype(w) = s.renormalize(re_w)
-    return eltype(w)(u * rere_w)
+    grad_w = s.limiter.(wst[0] - wst[-1], wst[1] - wst[0], β)
+    re_w = wst[0] .+ 0.5 * grad_w
+    rere_w = s.renormalize(re_w)
+    return u * rere_w
 end
 
 Base.print(io::IO, m::Muscl) = print(io, "Muscl($(m.limiter))")
@@ -68,7 +70,7 @@ VOF{NX, NY}(method) where {NX, NY} = VOF{NX, NY, typeof(method)}(method)
 
 function (s::VOF{NX, NY})(model::ScalarLinearAdvection, mesh, w, i_face; dt=0.0) where {NX, NY}
     stencil_radiuses = ((NX - 1) ÷ 2, (NY - 1) ÷ 2)
-    u, wst, Δx = upwind_stencil(model, mesh, w, i_face, NX, NY)
+    u, wst, Δx = upwind_stencil(model, mesh, w, i_face, Val(NX), Val(NY))
     if abs(u) < 1e-10
         return zero(eltype(w))
     else
@@ -97,7 +99,7 @@ end
 cut_in_range(inf, sup, x) = min(sup, max(inf, x))
 
 function (s::LagoutiereDownwind)(model::ScalarLinearAdvection{1, T, D}, mesh, w, i_face; dt=0.0) where {T, D}
-    u, wst, Δx = upwind_stencil(model, mesh, w, i_face, 3)
+    u, wst, Δx = upwind_stencil(model, mesh, w, i_face, Val(3))
     if abs(u) < 1e-10
         return zero(eltype(w))
     else
@@ -108,7 +110,7 @@ function (s::LagoutiereDownwind)(model::ScalarLinearAdvection{1, T, D}, mesh, w,
 end
 
 function (s::LagoutiereDownwind)(model::ScalarLinearAdvection{N, T, D}, mesh, w, i_face; dt=0.0) where {N, T, D}
-    u, wst, Δx = upwind_stencil(model, mesh, w, i_face, 3)
+    u, wst, Δx = upwind_stencil(model, mesh, w, i_face, Val(3))
     if abs(u) < 1e-10
         return zero(eltype(w))
     else
