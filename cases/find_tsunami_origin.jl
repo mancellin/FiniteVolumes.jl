@@ -50,5 +50,10 @@ function loss(xy)
     sum((measure(sol) .- measured_heights).^2)
 end
 
-using ForwardDiff
-ForwardDiff.gradient(loss, [0.5, 0.5])
+# using ForwardDiff
+# ForwardDiff.gradient(loss, [0.5, 0.5])
+
+using Optim
+cb(state) = (println(state); false)
+lossd = OnceDifferentiable(loss, [0.5, 0.5]; autodiff = :forward);
+opt = optimize(lossd, [0.5, 0.5], BFGS(), Optim.Options(store_trace=false, callback=cb))
