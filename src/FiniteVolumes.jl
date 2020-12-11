@@ -1,5 +1,8 @@
 module FiniteVolumes
 
+import Base.print
+import Base.show
+
 using LinearAlgebra
 using StaticArrays
 

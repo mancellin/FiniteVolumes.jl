@@ -1,5 +1,3 @@
-import Base.print
-
 ################################################################################
 #                            Scalar reconstruction                             #
 ################################################################################
@@ -12,35 +10,17 @@ function upwind_cell(model::ScalarLinearAdvection, mesh, i_face)
     return local_velocity, up_cell
 end
 
-function upwind_stencil(model, mesh, w, i_face; stencil_radiuses=(1, 1))
+function upwind_stencil(model, mesh::RegularMesh1D, w, i_face, N)
     u, i_cell = upwind_cell(model, mesh, i_face)
-    if nb_dims(mesh) == 1
-        st = oriented_stencil(mesh, i_cell, i_face)
-        Δx = dx(mesh)
-        wst = Stencil(SVector(w[st[-1, 0]], w[st[0, 0]], w[st[1, 0]]))
-    elseif nb_dims(mesh) == 2
-        st = oriented_stencil(mesh, i_cell, i_face, max(stencil_radiuses...))
-        Δx = _is_horizontal(i_face) ? dy(mesh) : dx(mesh)
-        # TODO: replace with crop and map functions on stencil
-        if stencil_radiuses == (1, 0)
-            wst = Stencil(SVector(w[st[-1, 0]], w[st[0, 0]], w[st[1, 0]]))
-        elseif stencil_radiuses == (1, 1)
-            wst = Stencil(
-                          @SMatrix [w[st[-1, -1]] w[st[-1, 0]] w[st[-1, 1]];
-                                    w[st[0, -1]]  w[st[0, 0]]  w[st[0, 1]];
-                                    w[st[1, -1]]  w[st[1, 0]]  w[st[1, 1]]]
-                         )
-        elseif stencil_radiuses == (2, 2)
-            wst = Stencil(
-                          @SMatrix [w[st[-2, -2]] w[st[-2, -1]] w[st[-2, 0]] w[st[-2, 1]] w[st[-2, 2]];
-                                    w[st[-1, -2]] w[st[-1, -1]] w[st[-1, 0]] w[st[-1, 1]] w[st[-1, 2]];
-                                    w[st[0,  -2]] w[st[0,  -1]] w[st[0,  0]] w[st[0,  1]] w[st[0,  2]];
-                                    w[st[1,  -2]] w[st[1,  -1]] w[st[1,  0]] w[st[1,  1]] w[st[1,  2]];
-                                    w[st[2,  -2]] w[st[2,  -1]] w[st[2,  0]] w[st[2,  1]] w[st[2,  2]]]
-                         )
-        end
-    end
-    return u, wst, Δx
+    st = Stencil{N, 1}(mesh, i_cell, i_face)
+    return u, w[st], dx(mesh)
+end
+
+function upwind_stencil(model, mesh::AbstractRegularMesh2D, w, i_face, N, M=1)
+    u, i_cell = upwind_cell(model, mesh, i_face)
+    st = Stencil{N, M}(mesh, i_cell, i_face)
+    Δx = _is_horizontal(i_face) ? dy(mesh) : dx(mesh)
+    return u, w[st], Δx
 end
 
 ###########
@@ -59,7 +39,7 @@ superbee(a, b, β) = a*b <= 0 ? 0.0 : (a >= 0 ? max(min(2*a, b), min(a, 2*b)) : 
 ultrabee(a, b, β) = a*b <= 0 ? 0.0 : (a >= 0 ? 2*max(0.0, min((1/β-1)*a, b)) : -ultrabee(-a, -b, β))
 
 function (s::Muscl)(model::ScalarLinearAdvection, mesh, w, i_face; dt=0.0)
-    u, wst, Δx = upwind_stencil(model, mesh, w, i_face, stencil_radiuses=(1, 0))
+    u, wst, Δx = upwind_stencil(model, mesh, w, i_face, 3)
     if isnothing(dt)
         β = nothing
     else
@@ -88,7 +68,7 @@ VOF{NX, NY}(method) where {NX, NY} = VOF{NX, NY, typeof(method)}(method)
 
 function (s::VOF{NX, NY})(model::ScalarLinearAdvection, mesh, w, i_face; dt=0.0) where {NX, NY}
     stencil_radiuses = ((NX - 1) ÷ 2, (NY - 1) ÷ 2)
-    u, wst, Δx = upwind_stencil(model, mesh, w, i_face; stencil_radiuses)
+    u, wst, Δx = upwind_stencil(model, mesh, w, i_face, NX, NY)
     if abs(u) < 1e-10
         return zero(eltype(w))
     else
@@ -117,7 +97,7 @@ end
 cut_in_range(inf, sup, x) = min(sup, max(inf, x))
 
 function (s::LagoutiereDownwind)(model::ScalarLinearAdvection{1, T, D}, mesh, w, i_face; dt=0.0) where {T, D}
-    u, wst, Δx = upwind_stencil(model, mesh, w, i_face, stencil_radiuses=(1, 0))
+    u, wst, Δx = upwind_stencil(model, mesh, w, i_face, 3)
     if abs(u) < 1e-10
         return zero(eltype(w))
     else
@@ -128,7 +108,7 @@ function (s::LagoutiereDownwind)(model::ScalarLinearAdvection{1, T, D}, mesh, w,
 end
 
 function (s::LagoutiereDownwind)(model::ScalarLinearAdvection{N, T, D}, mesh, w, i_face; dt=0.0) where {N, T, D}
-    u, wst, Δx = upwind_stencil(model, mesh, w, i_face, stencil_radiuses=(1, 0))
+    u, wst, Δx = upwind_stencil(model, mesh, w, i_face, 3)
     if abs(u) < 1e-10
         return zero(eltype(w))
     else
