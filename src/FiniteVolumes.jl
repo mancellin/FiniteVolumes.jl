@@ -21,7 +21,7 @@ include("./models/isothermal_two_fluid.jl")
 export IsothermalTwoFluidEuler, full_state
 
 include("./mesh.jl")
-export RegularMesh1D, RegularMesh2D, PeriodicRegularMesh2D, nb_dims, nb_cells, cell_centers
+export RegularMesh1D, RegularMesh2D, PeriodicRegularMesh2D, nb_dims, nb_cells, all_cells, cell_centers
 
 include("./stencil.jl")
 export Stencil

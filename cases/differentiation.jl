@@ -5,7 +5,7 @@ using FiniteVolumes
 grid = PeriodicRegularMesh2D(20, 20)
 model = directional_splitting(ScalarLinearAdvection([1.0, 1.0]))
 
-w₀(w) = [((x, y) = FiniteVolumes.cell_center(grid, i); w*sin(2π*x)*cos(2π*y)) for i in 1:nb_cells(grid)]
+w₀(w) = [((x, y) = FiniteVolumes.cell_center(grid, i); w*sin(2π*x)*cos(2π*y)) for i in all_cells(grid)]
 
 limiter(p) = (a, b, β) -> p*FiniteVolumes.minmod(a, b, β)
 numerical_flux(p) = Muscl(limiter=limiter(p))

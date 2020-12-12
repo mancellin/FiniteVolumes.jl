@@ -14,7 +14,7 @@ v₀((x0, y0)) = FiniteVolumes.compute_v.(Ref(model),
                                               uy=0.0
                                              )
                                          end
-                                         for i in 1:nb_cells(mesh)
+                                         for i in all_cells(mesh)
                                         ]
                                        )
 

@@ -1,7 +1,7 @@
 
 abstract type FiniteVolumeMesh end
 
-cell_centers(m::FiniteVolumeMesh) = [cell_center(m, i) for i in 1:nb_cells(m)]
+cell_centers(m::FiniteVolumeMesh) = [cell_center(m, i) for i in all_cells(m)]
 
 ################################################################################
 #                                      1D                                      #
@@ -20,6 +20,7 @@ end
 @inline nb_cells(grid::RegularMesh1D) = grid.nb_cells
 @inline nb_faces(grid::RegularMesh1D) = grid.nb_cells + 1
 
+all_cells(grid::RegularMesh1D) = 1:nb_cells(grid)
 cell_center(grid::RegularMesh1D, i_cell) = SVector{1, Float64}(dx(grid)*(Float64(i_cell) - 0.5))
 face_center(grid::RegularMesh1D, i_face) = SVector{1, Float64}(dx(grid)*(Float64(i_face) - 1.0))
 
@@ -69,6 +70,7 @@ PeriodicRegularMesh2D(nx::Int, ny::Int) = PeriodicRegularMesh2D(0.0, 1.0, nx, 0.
 nb_dims(grid::AbstractRegularMesh2D) = 2
 
 nb_cells(grid::AbstractRegularMesh2D) = grid.nx * grid.ny
+all_cells(grid::AbstractRegularMesh2D) = 1:nb_cells(grid)
 
 nb_faces(grid::RegularMesh2D) = 2 * grid.nx * grid.ny + grid.nx + grid.ny
 nb_faces(grid::PeriodicRegularMesh2D) = 2 * grid.nx * grid.ny

@@ -6,8 +6,8 @@ using OrdinaryDiffEq
 mesh = RegularMesh1D(0.0, 1.0, 100)
 model = ScalarLinearAdvection(1.0)
 
-w₀ = [i < nb_cells(mesh)/4 ? 1.0 : 0.0 for i in 1:nb_cells(mesh)]
-# w₀ = [sin(2π*cell_center(mesh, i)[1]) for i in 1:nb_cells(mesh)]
+w₀ = [i < nb_cells(mesh)/4 ? 1.0 : 0.0 for i in all_cells(mesh)]
+# w₀ = [sin(2π*cell_center(mesh, i)[1]) for i in all_cells(mesh)]
 
 dwdt_upwind(w, p, t) = -FiniteVolumes.div(model, mesh, numerical_flux=Upwind())(w)
 prob = ODEProblem(dwdt_upwind, w₀, 0.4)

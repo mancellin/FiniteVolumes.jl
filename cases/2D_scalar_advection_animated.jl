@@ -12,7 +12,7 @@ model = FiniteVolumes.AnonymousModel{Float64, 2, true}((α, x) -> α .* u(x))
 
 is_in_square(i, side=0.5) = all(0.5-side/2 .<= cell_center(mesh, i) .<= 0.5+side/2)
 
-w₀ = [is_in_square(i) ? 1.0 : 0.0 for i in 1:nb_cells(mesh)]
+w₀ = [is_in_square(i) ? 1.0 : 0.0 for i in all_cells(mesh)]
 
 anim = Animation()
 function plot_callback(i, t, w)

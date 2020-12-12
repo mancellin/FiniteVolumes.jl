@@ -74,7 +74,7 @@ riemann_problem(mesh, w₁, w₂) = [x[1] < 0.5 ? w₁ : w₂ for x in cell_cent
         grid = RegularMesh1D(0.0, 1.0, 100)
         model = FiniteVolumes.AnonymousModel{Float64, 1}(u -> 0.5*u.^2)
         on_step(i) = nb_cells(grid)/3 < i < 2*nb_cells(grid)/3
-        w₀ = [on_step(i) ? 1.0 : 0.0 for i in 1:nb_cells(grid)]
+        w₀ = [on_step(i) ? 1.0 : 0.0 for i in all_cells(grid)]
         t, w = FiniteVolumes.run(model, grid, w₀, cfl=0.2, nb_time_steps=10, verbose=false)
         @test maximum_principle(w, w₀)
     end
@@ -179,7 +179,7 @@ end
 
         left_state = full_state(model, p=2e5, u=0.0, ξ=1.0)
         right_state = full_state(model, p=1e5, u=0.0, ξ=0.0)
-        w₀ = [i < nb_cells(grid)/2 ? left_state : right_state for i in 1:nb_cells(grid)]
+        w₀ = [i < nb_cells(grid)/2 ? left_state : right_state for i in all_cells(grid)]
 
         t, w = FiniteVolumes.run(model, grid, w₀, cfl=0.4, nb_time_steps=20, verbose=false)
         @test maximum_principle(w, w₀, :ξ)

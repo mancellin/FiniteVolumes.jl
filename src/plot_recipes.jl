@@ -7,7 +7,7 @@ using ColorTypes
         title --> var
     end
 
-    x = [cell_center(grid, j)[1] + dx(grid)/2 for j in 1:nb_cells(grid)]
+    x = [cell_center(grid, j)[1] + dx(grid)/2 for j in all_cells(grid)]
     data = [wi[var] for wi in w]
     x, data
 end
