@@ -92,7 +92,7 @@ function face_center(grid::AbstractRegularMesh2D, i_face)
         i_cell = cell_next_to_boundary_face(grid, i_face)
     end
     return (cell_center(grid, i_cell) .+ 
-            rotation_matrix(grid, i_face) * @SVector [dx(grid)/2, dy(grid)/2])
+            rotation_matrix(grid, i_face)[:, 1] .* @SVector [dx(grid)/2, dy(grid)/2])
 end
 
 # By convention, all the horizontal faces have even indices.

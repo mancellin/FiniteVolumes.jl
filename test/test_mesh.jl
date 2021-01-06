@@ -51,6 +51,14 @@ using FiniteVolumes
 
         @test FiniteVolumes.cell_corners(m, 1).bottom_left == @SVector [0.0, 0.0]
         @test FiniteVolumes.cell_corners(m, nb_cells(m)).top_right == @SVector [1.0, 1.0]
+
+        @test FiniteVolumes.cell_center(m, 1) ≈ [0.1, 0.1]
+        @test FiniteVolumes.face_center(m, 1) == [0.2, 0.1]
+        @test FiniteVolumes.cell_center(m, 2) ≈ [0.3, 0.1]
+        @test FiniteVolumes.face_center(m, 2) == [0.1, 0.2]
+
+        @test FiniteVolumes.face_center(m, 51) == [0.0, 0.1]
+        @test FiniteVolumes.face_center(m, 52) == [0.1, 0.0]
     end
 
     @testset "Rectangular 2D mesh" begin
