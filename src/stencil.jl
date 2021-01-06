@@ -182,7 +182,7 @@ function Stencil{3, 1}(grid::AbstractRegularMesh2D, i_cell)
 end
 
 function Stencil{1, 3}(grid::AbstractRegularMesh2D, i_cell)
-    stencil = @SMatrix [_below_cell(grid, i_cell); i_cell; _right_cell(grid, i_cell)]
+    stencil = @SMatrix [_below_cell(grid, i_cell); i_cell; _above_cell(grid, i_cell)]
     return Stencil{1, 3, Int}(stencil)
 end
 

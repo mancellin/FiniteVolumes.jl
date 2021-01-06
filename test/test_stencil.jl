@@ -76,6 +76,13 @@ using StaticArrays
         @test Stencil{3, 3}(m, 1).data == @SMatrix [1 1 6; 1 1 6; 2 2 7]
 
         grid = PeriodicRegularMesh2D(3, 3)
+
+        @test Stencil{3, 1}(grid, 5, 9) == Stencil{3, 1}(grid, 5)
+        @test Stencil{3, 1}(grid, 5, 10) == transpose(Stencil{1, 3}(grid, 5))
+        @test Stencil{3, 1}(grid, 5, 10)[-1, 0] == 2
+        @test Stencil{3, 1}(grid, 5, 10)[0, 0] == 5
+        @test Stencil{3, 1}(grid, 5, 10)[1, 0] == 8
+
         st = Stencil{3, 3}(grid, 5)
         @test st[-1, -1] == 1
         @test st[1, 0] == 6
