@@ -52,7 +52,11 @@ function in_local_coordinates_at_boundary(f, model, mesh, w, i_face)
     return rotate_flux(ϕ, model, transpose(rotation_matrix(mesh, i_face)))
 end
 
-function neumann_bc(args...; kwargs...)
+abstract type BoundaryCondition end
+
+struct NeumannBC <: BoundaryCondition end
+
+function (::NeumannBC)(args...; kwargs...)
     in_local_coordinates_at_boundary(args...) do local_model, w₁
         normal_flux(local_model, w₁)
     end
@@ -60,7 +64,7 @@ end
 
 
 # BALANCE
-function div(model, mesh, w; numerical_flux=Upwind(), boundary_flux=neumann_bc, dt=nothing)
+function div(model, mesh, w; numerical_flux=Upwind(), boundary_flux=NeumannBC(), dt=nothing)
     Δv = zeros(consvartype(model, w), nb_cells(mesh))
 
     @inbounds for i_face in inner_faces(mesh)
