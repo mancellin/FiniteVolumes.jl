@@ -51,7 +51,7 @@ riemann_problem(mesh, w₁, w₂) = [x[1] < 0.5 ? w₁ : w₂ for x in cell_cent
         forward_model = ScalarLinearAdvection(1.0)
         backward_model = ScalarLinearAdvection(-1.0)
 
-        schemes = [Upwind(), Muscl(limiter=minmod), Muscl(limiter=ultrabee)]
+        schemes = [Upwind()] #, Muscl(limiter=minmod), Muscl(limiter=ultrabee)]
 
         settings = (cfl=0.1, nb_time_steps=5, verbose=false)
 
@@ -88,7 +88,7 @@ riemann_problem(mesh, w₁, w₂) = [x[1] < 0.5 ? w₁ : w₂ for x in cell_cent
 
         settings = (cfl=0.1, nb_time_steps=5, verbose=false)
 
-        schemes = [Upwind(), Muscl(limiter=minmod), Muscl(limiter=ultrabee), LagoutiereDownwind()]
+        schemes = [Upwind()] #, Muscl(limiter=minmod), Muscl(limiter=ultrabee), LagoutiereDownwind()]
         for s in schemes
             t, w = FiniteVolumes.run(model([1.0, 1.0]), grid, w₀; numerical_flux=s, settings...)
             @test maximum_principle(w, w₀)
@@ -142,7 +142,7 @@ end
 
         settings = (cfl=0.2, nb_time_steps=10, verbose=false)
 
-        schemes = [Upwind(), LagoutiereDownwind()]
+        schemes = [Upwind()] #, LagoutiereDownwind()]
         for s in schemes
             t, w = FiniteVolumes.run(model, grid, w₀; numerical_flux=s, settings...)
             @test maximum_principle(w, w₀, 1)
