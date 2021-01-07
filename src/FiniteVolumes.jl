@@ -24,7 +24,7 @@ include("./mesh.jl")
 export RegularMesh1D, RegularMesh2D, PeriodicRegularMesh2D, nb_dims, nb_cells, all_cells, cell_centers
 
 include("./scheme.jl")
-export NumericalFlux, Upwind
+export NumericalFlux, Upwind, FixedCourant
 
 include("./plot_recipes.jl")
 

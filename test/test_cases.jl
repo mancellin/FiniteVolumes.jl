@@ -30,13 +30,13 @@ riemann_problem(mesh, w₁, w₂) = [x[1] < 0.5 ? w₁ : w₂ for x in cell_cent
         # No velocity => no change
         w₀ = rand(nb_cells(mesh))
         model = ScalarLinearAdvection(0.0)
-        t, w = FiniteVolumes.run(model, mesh, w₀, dt=0.001, nb_time_steps=3, verbose=false)
+        t, w = FiniteVolumes.run(model, mesh, w₀, time_step=0.001, nb_time_steps=3, verbose=false)
         @test all(w .== w₀)
 
         # Uniform initial condition => no change
         w₀ = ones(nb_cells(mesh))
         model = ScalarLinearAdvection(1.0)
-        t, w = FiniteVolumes.run(model, mesh, w₀, dt=0.001, nb_time_steps=3, verbose=false)
+        t, w = FiniteVolumes.run(model, mesh, w₀, time_step=0.001, nb_time_steps=3, verbose=false)
         @test all(w .== w₀)
     end
 
@@ -53,7 +53,7 @@ riemann_problem(mesh, w₁, w₂) = [x[1] < 0.5 ? w₁ : w₂ for x in cell_cent
 
         schemes = [Upwind()] #, Muscl(limiter=minmod), Muscl(limiter=ultrabee)]
 
-        settings = (cfl=0.1, nb_time_steps=5, verbose=false)
+        settings = (time_step=FixedCourant(0.1), nb_time_steps=5, verbose=false)
 
         for w₀ in initial_conditions, s in schemes
             # Test stability
@@ -66,7 +66,7 @@ riemann_problem(mesh, w₁, w₂) = [x[1] < 0.5 ? w₁ : w₂ for x in cell_cent
 
         end
 
-        t, w_unstable = FiniteVolumes.run(forward_model, mesh, sine_w₀; cfl=1.5, nb_time_steps=5, verbose=false)
+        t, w_unstable = FiniteVolumes.run(forward_model, mesh, sine_w₀; time_step=FixedCourant(1.5), nb_time_steps=5, verbose=false)
         @test !maximum_principle(w_unstable, sine_w₀)
     end
 
@@ -75,7 +75,7 @@ riemann_problem(mesh, w₁, w₂) = [x[1] < 0.5 ? w₁ : w₂ for x in cell_cent
         model = FiniteVolumes.AnonymousModel{Float64, 1}(u -> 0.5*u.^2)
         on_step(i) = nb_cells(grid)/3 < i < 2*nb_cells(grid)/3
         w₀ = [on_step(i) ? 1.0 : 0.0 for i in all_cells(grid)]
-        t, w = FiniteVolumes.run(model, grid, w₀, cfl=0.2, nb_time_steps=10, verbose=false)
+        t, w = FiniteVolumes.run(model, grid, w₀, time_step=FixedCourant(0.2), nb_time_steps=10, verbose=false)
         @test maximum_principle(w, w₀)
     end
 
@@ -86,7 +86,7 @@ riemann_problem(mesh, w₁, w₂) = [x[1] < 0.5 ? w₁ : w₂ for x in cell_cent
         square(x, side=0.5) = all(0.5-side/2 .<= x .<= 0.5+side/2) ? 1.0 : 0.0
         w₀ = map(square, cell_centers(grid))
 
-        settings = (cfl=0.1, nb_time_steps=5, verbose=false)
+        settings = (time_step=FixedCourant(0.1), nb_time_steps=5, verbose=false)
 
         schemes = [Upwind()] #, Muscl(limiter=minmod), Muscl(limiter=ultrabee), LagoutiereDownwind()]
         for s in schemes
@@ -104,7 +104,7 @@ riemann_problem(mesh, w₁, w₂) = [x[1] < 0.5 ? w₁ : w₂ for x in cell_cent
         w₀ = map(square, cell_centers(grid))
 
         schemes = [Upwind()]
-        settings = (cfl=0.1, nb_time_steps=5, verbose=false)
+        settings = (time_step=FixedCourant(0.1), nb_time_steps=5, verbose=false)
         for s in schemes
             t, w = FiniteVolumes.run(model, grid, w₀; numerical_flux=s, settings...)
             @test maximum_principle(w, w₀)
@@ -119,7 +119,7 @@ riemann_problem(mesh, w₁, w₂) = [x[1] < 0.5 ? w₁ : w₂ for x in cell_cent
         model = FiniteVolumes.AnonymousModel{Float64, 2}(α -> 0.5*α.^2 * [1.0, 1.0])
         vertical_band(x) = 0.33 < x[1] < 0.66 ? 1.0 : 0.0
         w₀ = map(vertical_band, cell_centers(grid))
-        t, w = FiniteVolumes.run(model, grid, w₀, cfl=0.2, nb_time_steps=10, verbose=false)
+        t, w = FiniteVolumes.run(model, grid, w₀, time_step=FixedCourant(0.2), nb_time_steps=10, verbose=false)
         @test maximum_principle(w, w₀)
     end
 end
@@ -140,7 +140,7 @@ end
         end
         w₀ = map(triple_point, cell_centers(grid))
 
-        settings = (cfl=0.2, nb_time_steps=10, verbose=false)
+        settings = (time_step=FixedCourant(0.2), nb_time_steps=10, verbose=false)
 
         schemes = [Upwind()] #, LagoutiereDownwind()]
         for s in schemes
@@ -159,14 +159,14 @@ end
         mesh = RegularMesh1D(0.0, 1.0, 100)
         model = IsothermalTwoFluidEuler{nb_dims(mesh)}(1.0, 1.0, 5.0, 1000.0, 1.0)
         w₀ = riemann_problem(mesh, full_state(model, p=2.0, u=0.0, ξ=1.0), full_state(model, p=1.0, u=0.0, ξ=1.0))
-        t, w = FiniteVolumes.run(model, mesh, w₀, cfl=0.8, nb_time_steps=20, verbose=false)
+        t, w = FiniteVolumes.run(model, mesh, w₀, time_step=FixedCourant(0.8), nb_time_steps=20, verbose=false)
         @test w[50][:p] ≈ 1.41  rtol=1e-2
         @test w[50][:u] ≈ 0.347 rtol=1e-2
         @test maximum_principle(w, w₀, :ξ)
         @test boundedness(w, 0.0, 1.0, :α)
 
         w₀ = riemann_problem(mesh, full_state(model, p=2.0, u=0.0, ξ=0.0), full_state(model, p=1.0, u=0.0, ξ=0.0))
-        t, w = FiniteVolumes.run(model, mesh, w₀, cfl=0.8, nb_time_steps=20, verbose=false)
+        t, w = FiniteVolumes.run(model, mesh, w₀, time_step=FixedCourant(0.8), nb_time_steps=20, verbose=false)
         @test w[50][:p] ≈ 1.5  rtol=1e-2
         @test w[50][:u] ≈ 1e-4 rtol=1e-2
         @test maximum_principle(w, w₀, :ξ)
@@ -181,7 +181,7 @@ end
         right_state = full_state(model, p=1e5, u=0.0, ξ=0.0)
         w₀ = [i < nb_cells(grid)/2 ? left_state : right_state for i in all_cells(grid)]
 
-        t, w = FiniteVolumes.run(model, grid, w₀, cfl=0.4, nb_time_steps=20, verbose=false)
+        t, w = FiniteVolumes.run(model, grid, w₀, time_step=FixedCourant(0.4), nb_time_steps=20, verbose=false)
         @test maximum_principle(w, w₀, :ξ)
         @test boundedness(w, 0.0, 1.0, :α)
     end
@@ -194,7 +194,7 @@ end
 
         for u in [-1000.0, -10.0, 0.0, 10.0, 1000.0]
             w₀ = [full_state(model, p=1e5, u=u, ξ=ξ₀(x)) for x in cell_centers(grid)]
-            t, w = FiniteVolumes.run(model, grid, w₀, cfl=0.4, nb_time_steps=20, verbose=false)
+            t, w = FiniteVolumes.run(model, grid, w₀, time_step=FixedCourant(0.4), nb_time_steps=20, verbose=false)
             @test maximum_principle(w, w₀, :ξ)
             @test boundedness(w, 0.0, 1.0, :α)
             @test mass_conservation(grid, w, w₀)
@@ -212,7 +212,7 @@ end
 
         for ux in [-10.0, 0.0, 10.0], uy in [-10.0, 0.0, 10.0]
             w₀ = [full_state(model, p=1e5, ux=ux, uy=uy, ξ=ξ₀(x)) for x in cell_centers(grid)]
-            t, w = FiniteVolumes.run(model, grid, w₀, cfl=0.3, nb_time_steps=20, verbose=false)
+            t, w = FiniteVolumes.run(model, grid, w₀, time_step=FixedCourant(0.3), nb_time_steps=20, verbose=false)
             @test maximum_principle(w, w₀, :ξ)
             @test boundedness(w, 0.0, 1.0, :α)
             @test mass_conservation(grid, w, w₀)

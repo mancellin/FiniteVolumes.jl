@@ -122,12 +122,15 @@ function courant(Δt, model::ScalarLinearAdvection, mesh::PeriodicRegularMesh2D,
     return max(abs(vx) * Δt / dx(mesh), abs(vy) * Δt / dy(mesh))
 end
 
+struct FixedCourant{T}
+    fixed_courant::T
+end
 
 # RUN
 
 run!(model::AbstractModel, args...; kwargs...) = run!([model], args...; kwargs...)
 
-function run!(models, mesh, w, t; nb_time_steps, dt=nothing, cfl=nothing, verbose=true, callback=nothing, kwargs...)
+function run!(models, mesh, w, t; nb_time_steps, time_step, verbose=true, callback=nothing, kwargs...)
 
 	if verbose
 		p = Progress(nb_time_steps, dt=0.1)
@@ -135,12 +138,10 @@ function run!(models, mesh, w, t; nb_time_steps, dt=nothing, cfl=nothing, verbos
 
     for i_time_step in 1:nb_time_steps
 
-        if isnothing(dt)
-            if !isnothing(cfl)
-                dt = minimum(cfl/courant(1.0, m, mesh, w) for m in models)
-            else
-                error("No time step nor Courant number has been provided :(")
-            end
+        if time_step isa FixedCourant
+            dt = minimum(time_step.fixed_courant/courant(1.0, m, mesh, w) for m in models)
+        else
+            dt = time_step
         end
 
         for m in models
