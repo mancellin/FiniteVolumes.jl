@@ -42,5 +42,6 @@ function normal_flux(m::ScalarLinearAdvection{N, D, T}, w) where {N, D, T}
 end
 
 eigenvalues(m::ScalarLinearAdvection{N, D, T}, w) where {N, D, T} = @SVector fill(m.velocity[1], N)
+eigenvalues(m::ScalarLinearAdvection{N, D, T}, w::Number) where {N, D, T} = @SVector fill(m.velocity[1], N)
 left_eigenvectors(m::ScalarLinearAdvection{N, D, T}, w) where {N, D, T} = SMatrix{N, N, T}(I)
 right_eigenvectors(m::ScalarLinearAdvection{N, D, T}, w) where {N, D, T} = SMatrix{N, N, T}(I)
