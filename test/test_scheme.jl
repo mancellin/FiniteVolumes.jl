@@ -20,9 +20,12 @@ using FiniteVolumes
     @test flux(from_right, grid, [1.0, 0.0], 2) == 0.0
     @test flux(from_right, grid, [0.0, 1.0], 2) == -1.0
 
+    # Upwind scheme ignores the time step
+    @test flux(from_left, grid, [1.0, 0.0], 2, 0.2) == 1.0
+    @test flux(from_left, grid, [1.0, 0.0], 2, nothing) == 1.0
+
     @test flux(from_left, grid, [Scalar(1.0), Scalar(0.0)], 2) == Scalar(1.0)
     @test flux(from_right, grid, [Scalar(1.0), Scalar(0.0)], 2) == Scalar(0.0)
-
     @test flux(from_left, grid, [SVector(1.0), SVector(0.0)], 2) == SVector(1.0)
     @test flux(from_right, grid, [SVector(1.0), SVector(0.0)], 2) == SVector(0.0)
 
