@@ -12,7 +12,13 @@ function run!(fluxes::Tuple, mesh, w, t; nb_time_steps, time_step, verbose=true,
 		p = ProgressMeter.Progress(nb_time_steps, dt=0.1)
 	end
 
-    Δw = zeros(flux_type(fluxes[1], mesh, w), size(w))
+    Δw = zeros(
+        Base.return_types(
+            numerical_flux,
+            (typeof(fluxes[1]), typeof(mesh), typeof(w), typeof(first(inner_faces(mesh))), Float64)
+           )[1],
+        size(w)
+    )
 
     for i_time_step in 1:nb_time_steps
 

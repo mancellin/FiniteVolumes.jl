@@ -2,7 +2,7 @@
 abstract type NumericalFlux end
 
 # By default, can ignore time step
-(scheme::NumericalFlux)(model, mesh, w, i_face, dt) = scheme(model, mesh, w, i_face)
+(scheme::NumericalFlux)(flux, mesh, w, i_face, dt) = scheme(flux, mesh, w, i_face)
 
 ####################################
 struct Centered <: NumericalFlux end
@@ -124,11 +124,9 @@ function div!(Δw, flux, mesh, w, boundary_flux::BoundaryCondition, dt)
     end
 end
 
-flux_type(f, m::AbstractCartesianMesh{N, L}, w::AbstractArray{W}) where {N, L, W} = typeof(f(w[1], normal_vector(m, iterate(inner_faces(m))[1]))/oneunit(L))
 
-function div(flux, mesh, w; time_step=nothing, numerical_flux=Upwind(), boundary_flux=NeumannBC())
-    Δw = zeros(flux_type(flux, mesh, w) , size(w))
-    # TODO: use Base.result_types
+function div(flux, mesh, w; time_step=0.0, numerical_flux=Upwind(), boundary_flux=NeumannBC())
+    Δw = zeros(Base.return_types(numerical_flux, (typeof(flux), typeof(mesh), typeof(w), typeof(first(inner_faces(mesh))), typeof(time_step)))[1], size(w))
     div!(Δw, flux, mesh, w, numerical_flux, time_step)
     div!(Δw, flux, mesh, w, boundary_flux, time_step)
     return Δw
