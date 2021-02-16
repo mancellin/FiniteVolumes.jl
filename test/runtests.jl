@@ -9,6 +9,6 @@ using Test
     include("test_scheme.jl")
 
     # Integration tests
-    # include("test_cases.jl")
+    include("test_cases.jl")
     include("test_generic.jl")
 end
