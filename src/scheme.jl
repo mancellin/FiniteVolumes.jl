@@ -1,180 +1,149 @@
-using ProgressMeter: Progress, update!
-
-
-# NUMERICAL FLUX
-#
+# SCHEME
 abstract type NumericalFlux end
 
+# By default, can ignore time step
 (scheme::NumericalFlux)(model, mesh, w, i_face, dt) = scheme(model, mesh, w, i_face)
 
-struct Upwind <: NumericalFlux end
+####################################
+struct Centered <: NumericalFlux end
+####################################
 
-function in_local_coordinates(f, model, mesh, w, i_face)
+function (::Centered)(flux::Union{LinearAdvectionFlux, FluxFunction{<:Number}}, mesh, w, i_face)
+    n = normal_vector(mesh, i_face)
     i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
-    w₁ = rotate_state(w[i_cell_1], model, rotation_matrix(mesh, i_face))
-    w₂ = rotate_state(w[i_cell_2], model, rotation_matrix(mesh, i_face))
-    local_model = rotate_model(model, rotation_matrix(mesh, i_face), face_center(mesh, i_face))
-    ϕ = f(local_model, w₁, w₂)
-    return rotate_flux(ϕ, model, transpose(rotation_matrix(mesh, i_face)))
+    return 0.5*(flux(w[i_cell_1], n) + flux(w[i_cell_2], n))
 end
 
-function (::Upwind)(model::ScalarLinearAdvection, mesh, w, i_face)
-    in_local_coordinates(model, mesh, w, i_face) do local_model, w₁, w₂
-        λ = local_model.velocity[1]
-        return normal_flux(local_model, λ > 0 ? w₁ : w₂)
+####################################
+struct Downwind <: NumericalFlux end
+####################################
+
+function (::Downwind)(flux::Union{LinearAdvectionFlux, FluxFunction{<:Number}}, mesh, w, i_face)
+    n = normal_vector(mesh, i_face)
+    i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
+    λ = eigvals(flux, (w[i_cell_1] + w[i_cell_2])/2, n)
+    return λ < zero(λ) ? flux(w[i_cell_1], n) : flux(w[i_cell_2], n)
+end
+
+##################################
+struct Upwind <: NumericalFlux end
+##################################
+
+# Single-wave problems
+function (::Upwind)(flux::Union{LinearAdvectionFlux, FluxFunction{<:Number}}, mesh, w, i_face)
+    n = normal_vector(mesh, i_face)
+    i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
+    λ = eigvals(flux, (w[i_cell_1] + w[i_cell_2])/2, n)
+    return λ > zero(λ) ? flux(w[i_cell_1], n) : flux(w[i_cell_2], n)
+end
+
+# Multi-wave problems
+function (::Upwind)(flux, mesh, w, i_face)
+    n = normal_vector(mesh, i_face)
+    i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
+    w_mean = (w[i_cell_1] + w[i_cell_2])/2
+    λ, L = eigen(flux, w_mean, n)
+    left_to_right = λ .> zero(λ)
+    if all(left_to_right)
+        return flux(w[i_cell_1], n)
+    elseif !any(left_to_right)
+        return flux(w[i_cell_2], n)
+    else
+        f₁ = flux(w[i_cell_1], n)
+        f₂ = flux(w[i_cell_2], n)
+        return (f₁ + f₂ + L'*diagm(sign.(λ))*L*(f₁ - f₂))/2
     end
 end
 
-function (::Upwind)(model, mesh, w, i_face)  # l-upwind FVCF
-    in_local_coordinates(model, mesh, w, i_face) do local_model, w₁, w₂
-        flux₁ = normal_flux(local_model, w₁)
-        flux₂ = normal_flux(local_model, w₂)
+# function in_local_coordinates(f, model, mesh, w, i_face)
+#     i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
+#     w₁ = rotate_state(w[i_cell_1], model, rotation_matrix(mesh, i_face))
+#     w₂ = rotate_state(w[i_cell_2], model, rotation_matrix(mesh, i_face))
+#     local_model = rotate_model(model, rotation_matrix(mesh, i_face), face_center(mesh, i_face))
+#     ϕ = f(local_model, w₁, w₂)
+#     return rotate_flux(ϕ, model, transpose(rotation_matrix(mesh, i_face)))
+# end
 
-        w_int = compute_w_int(local_model, w₁, w₂)
-        λ = eigenvalues(local_model, w_int)
+# function (::Upwind)(model, mesh, w, i_face)  # l-upwind FVCF
+#     in_local_coordinates(model, mesh, w, i_face) do local_model, w₁, w₂
+#         flux₁ = normal_flux(local_model, w₁)
+#         flux₂ = normal_flux(local_model, w₂)
 
-        L₁ = left_eigenvectors(local_model, w₁)
-        L₂ = left_eigenvectors(local_model, w₂)
+#         w_int = compute_w_int(local_model, w₁, w₂)
+#         λ = eigenvalues(local_model, w_int)
 
-        L_upwind = ifelse.(λ .> 0.0, L₁, L₂)
-        L_flux_upwind = ifelse.(λ .> 0.0, L₁ * flux₁, L₂ * flux₂)
+#         L₁ = left_eigenvectors(local_model, w₁)
+#         L₂ = left_eigenvectors(local_model, w₂)
 
-        ϕ = L_upwind \ L_flux_upwind
-        return ϕ
-    end
-end
+#         L_upwind = ifelse.(λ .> 0.0, L₁, L₂)
+#         L_flux_upwind = ifelse.(λ .> 0.0, L₁ * flux₁, L₂ * flux₂)
 
+#         ϕ = L_upwind \ L_flux_upwind
+#         return ϕ
+#     end
+# end
 
-# BOUNDARY FLUX
-function in_local_coordinates_at_boundary(f, model, mesh, w, i_face)
-    i_cell_1 = cell_next_to_boundary_face(mesh, i_face)
-    w₁ = rotate_state(w[i_cell_1], model, rotation_matrix(mesh, i_face))
-    local_model = rotate_model(model, rotation_matrix(mesh, i_face), face_center(mesh, i_face))
-    ϕ = f(local_model, w₁)
-    return rotate_flux(ϕ, model, transpose(rotation_matrix(mesh, i_face)))
-end
+# BC
 
+###################################
 abstract type BoundaryCondition end
+###################################
 
 (scheme::BoundaryCondition)(model, mesh, w, i_face, dt) = scheme(model, mesh, w, i_face)
 
+#########################################
 struct NeumannBC <: BoundaryCondition end
+#########################################
 
-function (::NeumannBC)(model, mesh, w, i_face)
-    in_local_coordinates_at_boundary(model, mesh, w, i_face) do local_model, w₁
-        normal_flux(local_model, w₁)
-    end
+function (::NeumannBC)(flux, mesh, w, i_face)
+    i_cell_1 = cell_next_to_boundary_face(mesh, i_face)
+    return flux(w[i_cell_1], normal_vector(mesh, i_face))
 end
 
+################################################################################
+#                                     Div                                      #
+################################################################################
 
-# BALANCE
-function div(model, mesh, w; numerical_flux=Upwind(), boundary_flux=NeumannBC(), dt=nothing)
-    Δv = zeros(consvartype(model, w), nb_cells(mesh))
-
+function div!(Δw, flux, mesh, w, numerical_flux::NumericalFlux, dt)
     @inbounds for i_face in inner_faces(mesh)
-        ϕ = numerical_flux(model, mesh, w, i_face, dt)
+        ϕ = numerical_flux(flux, mesh, w, i_face, dt)
         i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
-        Δv[i_cell_1] += ϕ * face_area(mesh, i_face) / cell_volume(mesh, i_cell_1)
-        Δv[i_cell_2] -= ϕ * face_area(mesh, i_face) / cell_volume(mesh, i_cell_2)
+        Δw[i_cell_1] += ϕ * face_area(mesh, i_face) / cell_volume(mesh, i_cell_1)
+        Δw[i_cell_2] -= ϕ * face_area(mesh, i_face) / cell_volume(mesh, i_cell_2)
     end
+end
 
+function div!(Δw, flux, mesh, w, boundary_flux::BoundaryCondition, dt)
     @inbounds for i_face in boundary_faces(mesh)
-        ϕ = boundary_flux(model, mesh, w, i_face, dt)
+        ϕ = boundary_flux(flux, mesh, w, i_face, dt)
         i_cell = cell_next_to_boundary_face(mesh, i_face)
-        Δv[i_cell] += ϕ * face_area(mesh, i_face) / cell_volume(mesh, i_cell)
-    end
-    return Δv
-end
-
-function div(model, mesh; kwargs...)
-    function divF(w)
-        return div(model, mesh, w; kwargs...)
+        Δw[i_cell] += ϕ * face_area(mesh, i_face) / cell_volume(mesh, i_cell)
     end
 end
 
-function using_conservative_variables!(up!, model, w)
-    v = zeros(consvartype(model, w), length(w))
-    @inbounds for i_cell in 1:length(w)
-        v[i_cell] = compute_v(model, w[i_cell])
+flux_type(f, m::AbstractCartesianMesh{N, L}, w::AbstractArray{W}) where {N, L, W} = typeof(f(w[1], normal_vector(m, iterate(inner_faces(m))[1]))/oneunit(L))
+
+function div(flux, mesh, w; time_step=nothing, numerical_flux=Upwind(), boundary_flux=NeumannBC())
+    Δw = zeros(flux_type(flux, mesh, w) , size(w))
+    # TODO: use Base.result_types
+    div!(Δw, flux, mesh, w, numerical_flux, time_step)
+    div!(Δw, flux, mesh, w, boundary_flux, time_step)
+    return Δw
+end
+
+function numerical_fluxes!(Φ, flux, mesh, w, numerical_flux::NumericalFlux, dt)
+    map!(i_face -> numerical_flux(flux, mesh, w, i_face, dt), Φ, inner_faces(mesh))
+end
+
+function numerical_fluxes(flux, mesh, w, numerical_flux::NumericalFlux, dt)
+    map(i_face -> numerical_flux(flux, mesh, w, i_face, dt), inner_faces(mesh))
+end
+
+function update!(w, Φ, mesh, dt)
+    for (i, face) in enumerate(inner_faces(mesh))
+        i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, face)
+        w[i_cell_1] -= dt*Φ[i] * face_area(mesh, face) / cell_volume(mesh, i_cell_1)
+        w[i_cell_2] += dt*Φ[i] * face_area(mesh, face) / cell_volume(mesh, i_cell_2)
     end
-    up!(v)
-    @inbounds for i_cell in 1:length(w)
-        w[i_cell] = invert_v(model, v[i_cell])
-    end
-end
-
-
-# COURANT
-
-function courant(Δt, model::AbstractModel, mesh, w)
-    courant = 0.0
-    for i_face in inner_faces(mesh)
-        i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
-        w₁ = rotate_state(w[i_cell_1], model, rotation_matrix(mesh, i_face))
-        w₂ = rotate_state(w[i_cell_2], model, rotation_matrix(mesh, i_face))
-        local_model = rotate_model(model, rotation_matrix(mesh, i_face), face_center(mesh, i_face))
-        w_int = compute_w_int(local_model, w₁, w₂)
-        λ = eigenvalues(local_model, w_int)
-        maxλ = maximum(abs.(λ))
-        courant = max(courant, maxλ * Δt * face_area(mesh, i_face) / max(cell_volume(mesh, i_cell_1), cell_volume(mesh, i_cell_2)))
-    end
-    return courant
-end
-
-function courant(Δt, model::ScalarLinearAdvection, mesh::RegularMesh1D, w)
-    return abs(model.velocity[1]) * Δt / dx(mesh)
-end
-
-function courant(Δt, model::ScalarLinearAdvection, mesh::PeriodicRegularMesh2D, w)
-    vx, vy = model.velocity
-    return max(abs(vx) * Δt / dx(mesh), abs(vy) * Δt / dy(mesh))
-end
-
-struct FixedCourant{T}
-    fixed_courant::T
-end
-
-# RUN
-
-run!(model::AbstractModel, args...; kwargs...) = run!([model], args...; kwargs...)
-
-function run!(models, mesh, w, t; nb_time_steps, time_step, verbose=true, callback=nothing, kwargs...)
-
-	if verbose
-		p = Progress(nb_time_steps, dt=0.1)
-	end
-
-    for i_time_step in 1:nb_time_steps
-
-        if time_step isa FixedCourant
-            dt = minimum(time_step.fixed_courant/courant(1.0, m, mesh, w) for m in models)
-        else
-            dt = time_step
-        end
-
-        for m in models
-            using_conservative_variables!(m, w) do v
-                v .-= dt * div(m, mesh, w; dt=dt, kwargs...)
-            end
-        end
-
-		if verbose
-			update!(p, i_time_step)
-		end
-
-        t += dt
-
-        if callback != nothing
-            callback(i_time_step, t, w)
-        end
-    end
-
-    return t
-end
-
-function run(model, mesh, w₀; kwargs...)
-	w = deepcopy(w₀)
-    t = run!(model, mesh, w, 0.0; kwargs...)
-	return t, w
 end
 
