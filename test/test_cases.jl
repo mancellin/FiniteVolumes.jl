@@ -4,6 +4,7 @@ using Test
 using LinearAlgebra: norm
 using StaticArrays
 using FiniteVolumes
+import FiniteVolumes.courant
 
 # TOOLS
 getfield(w, var) = [wi[var] for wi in w]
@@ -116,18 +117,35 @@ riemann_problem(mesh, w₁, w₂, step_position=0.5) = [x[1] < step_position ? w
         @test all(sum.(w) .≈ 1.0)
     end
 
-    # @testset "2D rotation" begin
-    #     mesh = CartesianMesh(40, 40)
-    #     u(x, center=(0.5, 0.5)) = [-(x[2]-center[2]), (x[1]-center[1])]
-    #     flux = FluxFunction{Float64, 2, true}((α, x) -> α .* u(x)) 
+    @testset "2D rotation" begin
+        struct AdvectionFlux{V} <: FiniteVolumes.AbstractFlux
+            velocity::V
+        end
 
-    #     square(x, side=0.5) = all(0.5-side/2 .<= x .<= 0.5+side/2) ? 1.0 : 0.0
-    #     w₀ = map(square, cell_centers(mesh))
+        function (scheme::FiniteVolumes.NumericalFlux)(flux::AdvectionFlux, mesh, w, i_face, dt)
+            v = LinearAdvectionFlux(flux.velocity(FiniteVolumes.face_center(mesh, i_face)))
+            return scheme(v, mesh, w, i_face, dt)
+        end
 
-    #     settings = (time_step=FixedCourant(0.1), nb_time_steps=5, numerical_flux=Upwind(), verbose=false)
-    #     t, w = FiniteVolumes.run(flux, mesh, w₀; settings...)
-    #     @test maximum_principle(w, w₀)
-    # end
+        function FiniteVolumes.courant(Δt, flux::AdvectionFlux, mesh, w, i_face)
+            v = LinearAdvectionFlux(flux.velocity(FiniteVolumes.face_center(mesh, i_face)))
+            return courant(Δt, v, mesh, w, i_face)
+        end
+
+        mesh = PeriodicCartesianMesh(40, 40)
+        flux = AdvectionFlux(x -> SVector(-(x[2] - 0.5), x[1]-0.5))
+        splitted_flux = (AdvectionFlux(x -> SVector(-(x[2] - 0.5), 0.0)), AdvectionFlux(x -> SVector(0.0, x[1] - 0.5)))
+
+        square(x, side=0.5) = all(0.5-side/2 .<= x .<= 0.5+side/2) ? 1.0 : 0.0
+        w₀ = map(square, cell_centers(mesh))
+
+        settings = (time_step=FixedCourant(0.1), nb_time_steps=10, numerical_flux=Upwind(), verbose=false)
+        t, w = FiniteVolumes.run(flux, mesh, w₀; settings...)
+        @test maximum_principle(w, w₀)
+
+        t, w = FiniteVolumes.run(splitted_flux, mesh, w₀; settings...)
+        @test maximum_principle(w, w₀)
+    end
 
     @testset "2D diagonal Burger" begin
         #   ∂_t α + u₀ ⋅ ∇ α^2/2 = 0
