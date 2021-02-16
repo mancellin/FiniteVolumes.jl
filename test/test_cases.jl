@@ -142,6 +142,45 @@ riemann_problem(mesh, w₁, w₂, step_position=0.5) = [x[1] < step_position ? w
     end
 end
 
+@testset "Shallow water" begin
+
+    total_mass(mesh, v) = sum(v[i][1] * FiniteVolumes.cell_volume(mesh, i) for i in FiniteVolumes.all_cells(mesh))
+    total_momentum(mesh, v) = sum(v[i][2] * FiniteVolumes.cell_volume(mesh, i) for i in FiniteVolumes.all_cells(mesh))
+
+    @testset "1D" begin
+        flux = ShallowWater(9.8)
+        @test Upwind()(flux, CartesianMesh(2), [SVector(1.0, 0.0), SVector(1.0, 0.0)], (FiniteVolumes.Half(3,))) == SVector(0.0, 9.8/2)
+        @test Upwind()(flux, CartesianMesh(2), [SVector(2.0, 0.0), SVector(1.0, 0.0)], (FiniteVolumes.Half(3,))) ≈ SVector(1.9170289512680811, 12.25)
+
+        mesh = CartesianMesh(100)
+        w₀ = riemann_problem(mesh, SVector(2.0, 0.0), SVector(1.0, 0.0))
+        t, w = FiniteVolumes.run(flux, mesh, w₀, time_step=FixedCourant(0.4),
+                                 nb_time_steps=50, verbose=false)
+
+        w₀ = map(x -> SVector(1.0 + exp(-500*(x[1]-0.5)^2), 0.0), cell_centers(mesh))
+        t, w = FiniteVolumes.run(flux, mesh, w₀, time_step=FixedCourant(0.4),
+                                 nb_time_steps=50, verbose=false)
+
+        @test total_mass(mesh, w₀) .≈ total_mass(mesh, w)
+        @test total_momentum(mesh, w₀) .≈ total_momentum(mesh, w) atol=1e-15
+        # plot(mesh, w, 1); plot!(mesh, w, 2)
+    end
+
+    @testset "2D" begin
+        mesh = PeriodicCartesianMesh(40, 40)
+        flux = ShallowWater(9.8)
+        w₀ = map(x -> SVector(1.0 + exp(-500*((x[1]-0.5)^2 + (x[2]-0.5)^2)), 0.0, 0.0), cell_centers(mesh))
+        FiniteVolumes.div(flux, mesh, w₀)
+        t, w = FiniteVolumes.run(flux, mesh, w₀, time_step=FixedCourant(0.3),
+                                 nb_time_steps=40, verbose=false)
+
+        @test total_mass(mesh, w₀) .≈ total_mass(mesh, w)
+        @test total_momentum(mesh, w₀) .≈ total_momentum(mesh, w) atol=1e-15
+        # plot(mesh, w, 1)
+    end
+
+end
+
 total_mass(mesh, w) = sum(w[i][:ρ] * FiniteVolumes.cell_volume(mesh, i) for i in nb_cells(mesh))
 total_gas_mass(mesh, w) = sum(w[i][:ρ] * w[i][:ξ] * FiniteVolumes.cell_volume(mesh, i) for i in nb_cells(mesh))
 mass_conservation(mesh, w, w₀) = (total_mass(mesh, w) == total_mass(mesh, w₀) && 

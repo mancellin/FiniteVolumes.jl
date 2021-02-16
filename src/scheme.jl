@@ -42,7 +42,7 @@ function (::Upwind)(flux, mesh, w, i_face)
     n = normal_vector(mesh, i_face)
     i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
     w_mean = (w[i_cell_1] + w[i_cell_2])/2
-    λ, L = eigen(flux, w_mean, n)
+    λ, R = eigen(flux, w_mean, n)
     left_to_right = λ .> zero(λ)
     if all(left_to_right)
         return flux(w[i_cell_1], n)
@@ -51,7 +51,10 @@ function (::Upwind)(flux, mesh, w, i_face)
     else
         f₁ = flux(w[i_cell_1], n)
         f₂ = flux(w[i_cell_2], n)
-        return (f₁ + f₂ + L'*diagm(sign.(λ))*L*(f₁ - f₂))/2
+        decentrement = R \ (f₁ - f₂)
+        return (f₁ + f₂ + R*diagm(sign.(λ))*decentrement)/2
+        # L = inv(R)
+        # return (f₁ + f₂ + R*diagm(sign.(λ))*L*(f₁ - f₂))/2
     end
 end
 

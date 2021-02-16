@@ -7,7 +7,7 @@ include("./cartesian_mesh.jl")
 export CartesianMesh, PeriodicCartesianMesh, cell_centers
 
 include("./flux_function.jl")
-export LinearAdvectionFlux, Wave1DFlux, FluxFunction
+export LinearAdvectionFlux, Wave1DFlux, FluxFunction, ShallowWater
 
 include("./scheme.jl")
 export Upwind
