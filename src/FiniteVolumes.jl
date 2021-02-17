@@ -11,7 +11,7 @@ export LinearAdvectionFlux, Wave1DFlux, FluxFunction, ShallowWater
 export directional_splitting
 
 include("./scheme.jl")
-export Upwind
+export Upwind, NeumannBC
 
 include("./courant.jl")
 

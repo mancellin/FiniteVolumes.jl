@@ -46,4 +46,21 @@ using FiniteVolumes
         end
         ForwardDiff.derivative(run, 1.0)
     end
+
+    @testset "OrdinaryDiffEq" begin
+        using OrdinaryDiffEq
+        mesh = CartesianMesh(10)
+        flux = LinearAdvectionFlux(1.0)
+
+        w₀ = map(x -> x < 0.5 ? 1.0 : 0.0, cell_centers(mesh))
+        dwdt_upwind(w, p, t) = -FiniteVolumes.div(flux, mesh, w)
+        prob = ODEProblem(dwdt_upwind, w₀, 0.4)
+        sol1 = solve(prob, Euler(), dt=0.005, saveat=0.1)
+        sol2 = solve(prob, RK4(), dt=0.005, adaptive=false, saveat=0.1)
+        sol3 = solve(prob, ImplicitEuler(), dt=0.1, saveat=0.1)
+
+        @test all(0.0 .<= sol1.u[end] .<= 1.0)
+        @test all(0.0 .<= sol2.u[end] .<= 1.0)
+        @test all(0.0 .<= sol2.u[end] .<= 1.0)
+    end
 end
