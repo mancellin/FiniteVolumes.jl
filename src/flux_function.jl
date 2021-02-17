@@ -14,6 +14,7 @@ end
 struct LinearAdvectionFlux{V} <: AbstractFlux
     velocity::V
 end
+LinearAdvectionFlux(v::AbstractArray) = LinearAdvectionFlux{SVector{length(v), eltype(v)}}(SVector(v...))
 
 (f::LinearAdvectionFlux)(w, n) = w * (f.velocity' * n)
 LinearAlgebra.eigvals(f::LinearAdvectionFlux, w, n) = f.velocity' * n
