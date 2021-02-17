@@ -124,16 +124,18 @@ function div!(Δw, flux, mesh, w, boundary_flux::BoundaryCondition, dt)
     end
 end
 
+flux_in_cell(flux, mesh, w, scheme, dt, i_face, i_cell) = scheme(flux, mesh, w, i_face, dt) * face_area(mesh, i_face) / cell_volume(mesh, i_cell)
+Δw_type(flux, mesh, w, scheme, dt) = Base.return_types(flux_in_cell, typeof.((flux, mesh, w, scheme, dt, first(inner_faces(mesh)), first(all_cells(mesh)))))[1]
 
 function div(flux, mesh, w; time_step=0.0, numerical_flux=Upwind(), boundary_flux=NeumannBC())
-    Δw = zeros(Base.return_types(numerical_flux, (typeof(flux), typeof(mesh), typeof(w), typeof(first(inner_faces(mesh))), typeof(time_step)))[1], size(w))
+    Δw = zeros(Δw_type(flux, mesh, w, numerical_flux, time_step), size(w))
     div!(Δw, flux, mesh, w, numerical_flux, time_step)
     div!(Δw, flux, mesh, w, boundary_flux, time_step)
     return Δw
 end
 
 function numerical_fluxes!(Φ, flux, mesh, w, numerical_flux::NumericalFlux, dt)
-    map!(i_face -> numerical_flux(flux, mesh, w, i_face, dt), Φ, inner_faces(mesh))
+    map!(i_face -> numerical_flux(flux, mesh, w, i_face, dt), Φ, collect(inner_faces(mesh)))
 end
 
 function numerical_fluxes(flux, mesh, w, numerical_flux::NumericalFlux, dt)
