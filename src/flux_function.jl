@@ -49,22 +49,25 @@ struct FluxFunction{T, D, F} <: AbstractFlux
 end
 FluxFunction{T, D}(f) where {T, D} = FluxFunction{T, D, typeof(f)}(f)
 
-(f::FluxFunction{T, 1})(w, n) where T = f.func(w) * n
-(f::FluxFunction)(w, n) = f.func(w)' * n
+(f::FluxFunction{T, 1})(w::T, n) where T = f.func(w) * n
+(f::FluxFunction)(w, n) = (f.func(w)' * n)'
 
-LinearAlgebra.eigvals(f::FluxFunction{<:Number}, w, n) = ForwardDiff.derivative(v -> f(v, n), w)
+jacobian(f::FluxFunction{T, D}, w::T, n) where {T <: Number, D} = ForwardDiff.derivative(v -> f(v, n), w)
+LinearAlgebra.eigvals(f::FluxFunction{T, D}, w::D, n) where {T <: Number, D} = jacobian(f, w, n)
 
 ##############################
 
 struct ShallowWater{T} <: AbstractFlux
     g::T
 end
+ShallowWater(; g=9.81) = ShallowWater{typeof(g)}(g)
 
-function (f::ShallowWater)(v::SVector{2}, n)
+function (f::ShallowWater)(v::SVector{2}, n::Union{Number, Scalar, SVector{1}})
     h, hu = v[1], v[2]
     SVector(hu * n, hu^2/h + h^2 * f.g/2) * n
 end
-function (f::ShallowWater)(v::SVector{3}, n)
+
+function (f::ShallowWater)(v::SVector{3}, n::SVector{2})
     h, ux, uy = v[1], v[2]/v[1], v[3]/v[1]
     R = SMatrix{2, 2}(n[1], -n[2], n[2], n[1])
     u_local = R * SVector(ux, uy)
