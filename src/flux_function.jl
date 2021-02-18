@@ -26,22 +26,6 @@ end
 
 ##############################
 
-struct Wave1DFlux{T} <: AbstractFlux
-    velocity::T
-end
-
-(f::Wave1DFlux)(w, n) = f.velocity*SVector{2}(w[2], w[1])*n
-
-jacobian(f::Wave1DFlux, w, n) = f.velocity*SMatrix{2, 2}(0.0, 1.0, 1.0, 0.0)*n
-LinearAlgebra.eigvals(f::Wave1DFlux, w, n) = SVector{2}(-1.0, 1.0)*n
-LinearAlgebra.eigen(f::Wave1DFlux, w, n) = (eigvals(f, w, n), SMatrix{2, 2}(-0.707107, 0.707107, 0.707107, 0.707107)*n)
-
-# jacobian(f::Wave1DFlux, w::SVector{2, T}, n) where {T} = f.velocity * SMatrix{2, 2}(zero(T)/oneunit(T), one(T), one(T), zero(T)/oneunit(T)) * n
-# LinearAlgebra.eigvals(f::Wave1DFlux, w::SVector{2, T}, n) where {T} = SVector{2}(-one(T), one(T)) * n
-# LinearAlgebra.eigen(f::Wave1DFlux, w::SVector{2, T}, n) where {T} = (eigvals(f, w, n), SMatrix{2, 2}(-0.707107, 0.707107, 0.707107, 0.707107)*n)
-
-##############################
-
 struct FluxFunction{T, D, F} <: AbstractFlux
     # T = datatype
     # D = space dimension

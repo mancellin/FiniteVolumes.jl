@@ -1,9 +1,9 @@
 # Integration tests on some simple test cases.
 
 using Test
-using LinearAlgebra: norm
 using StaticArrays
 using FiniteVolumes
+import LinearAlgebra
 import FiniteVolumes.courant
 
 # TOOLS
@@ -71,8 +71,19 @@ riemann_problem(mesh, w₁, w₂, step_position=0.5) = [x[1] < step_position ? w
         f = FluxFunction{SVector{2}, 1}(α -> SVector(α[2], α[1]))
         t, w₁ = FiniteVolumes.run(f, mesh, w₀, time_step=FixedCourant(0.2), nb_time_steps=10, verbose=false)
 
+        struct Wave1DFlux{T} <: FiniteVolumes.AbstractFlux
+            velocity::T
+        end
+
+        (f::Wave1DFlux{T})(w, n) where T = f.velocity*SVector{2}(w[2], w[1])*n
+
+        jacobian(f::Wave1DFlux, w, n) = f.velocity*SMatrix{2, 2}(0.0, 1.0, 1.0, 0.0)*n
+        LinearAlgebra.eigvals(f::Wave1DFlux, w, n) = SVector{2}(-1.0, 1.0)*n
+        LinearAlgebra.eigen(f::Wave1DFlux, w, n) = (SVector{2}(-1.0, 1.0)*n, SMatrix{2, 2}(-0.707107, 0.707107, 0.707107, 0.707107)*n)
+
         f = Wave1DFlux(1.0)
         t, w₂ = FiniteVolumes.run(f, mesh, w₀, time_step=FixedCourant(0.2), nb_time_steps=10, verbose=false)
+
         @test all(isapprox.(w₁, w₂, atol=1e-6))
     end
 
