@@ -1,4 +1,3 @@
-using LinearAlgebra: norm
 using FiniteVolumes
 using Printf
 using Plots
