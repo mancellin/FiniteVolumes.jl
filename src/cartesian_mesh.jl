@@ -7,6 +7,7 @@ Base.Int(h::Half{Int}) = Base.div(h.n, 2)
 Base.convert(::Type{Int}, h::Half{Int}) = Int(h)
 Base.convert(::Type{<:Number}, h::Half) = h.n/2
 Base.:+(a::Half, b::Half) = Half(a.n+b.n)
+Base.:-(a::Half) = Half(-a.n)
 Base.:-(a::Half, b::Half) = Half(a.n-b.n)
 Base.:(==)(a::Half, b::Half) = a.n == b.n
 Base.:<(a::Half, b::Half) = a.n < b.n
@@ -55,16 +56,21 @@ boundary_faces(mesh::CartesianMesh{1}) = ((Half(1),), (Half(2*mesh.nb_cells[1]+1
 inner_faces(mesh::PeriodicCartesianMesh{1}) = ((Half(n),) for n in 1:2:2*mesh.nb_cells[1])
 boundary_faces(mesh::PeriodicCartesianMesh{1}) = Tuple([]) 
 
-function _face(dir, cell::CartesianIndex{2})
-    if dir == 1
-        Tuple(Half.(2*SVector((Tuple(cell)...))) - SVector(Half(1), Half(0)))
-    elseif dir == 2
-        Tuple(Half.(2*SVector((Tuple(cell)...))) - SVector(Half(0), Half(1)))
-    else
-        error()
-    end
-end
-inner_faces(mesh::PeriodicCartesianMesh{2}) = (_face(dir, cell) for cell in CartesianIndices(Tuple(mesh.nb_cells)) for dir in 1:2)
+const _left = (-Half(1), Half(0))
+const _right = (Half(1), Half(0))
+const _down = (Half(0), -Half(1))
+const _up = (Half(0), Half(1))
+_bottom_cells(mesh::CartesianMesh{2}) = ((n, m) = mesh.nb_cells; CartesianIndices((1:n, 1:1)))
+_top_cells(mesh::CartesianMesh{2}) = ((n, m) = mesh.nb_cells; CartesianIndices((1:n, m:m)))
+_left_cells(mesh::CartesianMesh{2}) = ((n, m) = mesh.nb_cells; CartesianIndices((1:1, 1:m)))
+_right_cells(mesh::CartesianMesh{2}) = ((n, m) = mesh.nb_cells; CartesianIndices((n:n, 1:m)))
+
+_face(dir, cell::CartesianIndex{2}) = Half.(2 .* Tuple(cell)) .+ dir
+
+inner_faces(mesh::CartesianMesh{2}) = ((n, m) = mesh.nb_cells; (_face(dir, cell) for (dir, cells) in ((_right, CartesianIndices((1:(n-1), 1:m))), (_up, CartesianIndices((1:n, 1:(m-1))))) for cell in cells))
+boundary_faces(mesh::CartesianMesh{2}) = (_face(dir, cell) for (dir, cells) in ((_down, _bottom_cells(mesh)), (_right, _right_cells(mesh)), (_up, _top_cells(mesh)), (_left, _left_cells(mesh))) for cell in cells)
+
+inner_faces(mesh::PeriodicCartesianMesh{2}) = (_face(dir, cell) for cell in CartesianIndices(Tuple(mesh.nb_cells)) for dir in (_down, _left))
 boundary_faces(mesh::PeriodicCartesianMesh{2}) = Tuple([])
 
 _direction(i_face::NTuple{2, Half{Int}}) = is_int(i_face[1]) ? 2 : 1
@@ -96,6 +102,20 @@ end
 
 cell_next_to_boundary_face(mesh::CartesianMesh{1}, i_face) = i_face == (Half(1),) ? CartesianIndex(1) : CartesianIndex(mesh.nb_cells[1])
 
+function cell_next_to_boundary_face(mesh::CartesianMesh{2}, i_face)
+    if i_face[1] == Half(1)  # left boundary
+        return CartesianIndex(Int(i_face[1]) + 1, Int(i_face[2]))
+    elseif i_face[2] == Half(1)  # bottom boundary
+        return CartesianIndex(Int(i_face[1]), Int(i_face[2]) + 1)
+    elseif _direction(i_face) == 1  # right boundary
+        return CartesianIndex(Int(i_face[1]), Int(i_face[2]))
+    elseif _direction(i_face) == 2  # top boundary
+        return CartesianIndex(Int(i_face[1]), Int(i_face[2]))
+    else
+        error()
+    end
+end
+
 cell_center(mesh::AbstractCartesianMesh{1}, i_cell) = (i_cell[1] - 0.5) * dx(mesh)[1]
 cell_center(mesh::AbstractCartesianMesh{N}, i_cell) where N = (SVector{N}(Tuple(i_cell)...) .- 0.5) .* dx(mesh)
 face_center(mesh::AbstractCartesianMesh{1}, i_face) = (i_face[1] - 0.5) * dx(mesh)[1]
@@ -118,16 +138,16 @@ normal_vector(mesh::CartesianMesh{1, T}, i_face) where T = i_face == (Half(1),) 
 normal_vector(mesh::PeriodicCartesianMesh{1, T}, i_face) where T = one(T)
 function normal_vector(mesh::AbstractCartesianMesh{2, T}, i_face) where T
     if mesh isa CartesianMesh
-        if i_face[1] == Half(1)
-            SVector(-oneunit(T), zero(T))./oneunit(T)
-        elseif i_face[2] == Half(1)
-            SVector(zero(T), -oneunit(T))./oneunit(T)
+        if i_face[1] == Half(1)  # Left boundary
+            return SVector(-oneunit(T), zero(T))./oneunit(T)
+        elseif i_face[2] == Half(1)  # Bottom boundary
+            return SVector(zero(T), -oneunit(T))./oneunit(T)
         end
     end
     if _direction(i_face) == 1
-        SVector(oneunit(T), zero(T))./oneunit(T)
+        return SVector(oneunit(T), zero(T))./oneunit(T)
     elseif _direction(i_face) == 2
-        SVector(zero(T), oneunit(T))./oneunit(T)
+        return SVector(zero(T), oneunit(T))./oneunit(T)
     else
         error()
     end
