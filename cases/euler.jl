@@ -103,22 +103,93 @@ function LinearAlgebra.eigen(::EulerFlux, v, n::Number)
     return vals, vect
 end
 
+function (::EulerFlux)(v, n::SVector{2})
+    ρ = v[1]
+    ux, uy = v[2]/v[1], v[3]/v[1]
+    ξ = v[4]/v[1]
+    p = invert_p_exact(model, ρ, ξ)
+    R = SMatrix{2, 2}(n[1], -n[2], n[2], n[1])
+    u_local = R * SVector(ux, uy)
+    ϕu_local = SVector(ρ*u_local[1]^2 + p, ρ*u_local[1]*u_local[2]) 
+    ϕu = R' * ϕu_local
+    return SVector(ρ*u_local[1], ϕu[1], ϕu[2], ρ*ξ*u_local[1])
+end
+
+function LinearAlgebra.eigvals(::EulerFlux, v, n::SVector{2})
+    ρ = v[1]
+    ux, uy = v[2]/v[1], v[3]/v[1]
+    R = SMatrix{2, 2}(n[1], -n[2], n[2], n[1])
+    u_local = R * SVector(ux, uy)
+    ξ = v[4]/v[1]
+    p = invert_p_exact(model, ρ, ξ)
+    c = √(ρ²c²(model, p, ξ))/ρ
+    return SVector(u_local[1]-c, u_local[1], u_local[1], u_local[1]+c)
+end
+
+function RR(n::SVector{2, T}) where T
+    z = zero(T)
+    i = oneunit(T)
+    SMatrix{4, 4}(i, z, z, z,
+                  z, n[1], -n[2], z,
+                  z, n[2], n[1], z,
+                  z, z, z, i)
+end
+
+function LinearAlgebra.eigen(::EulerFlux, v, n::SVector{2})
+    ρ = v[1]
+    ux, uy = v[2]/v[1], v[3]/v[1]
+    R = SMatrix{2, 2}(n[1], -n[2], n[2], n[1])
+    u_local = R * SVector(ux, uy)
+    ux, uy = u_local
+    ξ = v[4]/v[1]
+    p = invert_p_exact(model, ρ, ξ)
+    c = √(ρ²c²(model, p, ξ))/ρ
+    dρdξ_ = dρdξ(model, p, ξ)
+    vals = SVector(ux-c, ux, ux, ux+c)
+    vect = @SMatrix [0.5      0.0  dρdξ_/ρ       0.5;
+                     (ux-c)/2 0.0  ux*dρdξ_/ρ    (c+ux)/2;
+                     uy/2     1.0  uy*dρdξ_/ρ    uy/2;
+                     ξ/2      0.0  ξ*dρdξ_/ρ+1.0 ξ/2]
+    return vals, RR(n)' * vect * RR(n)
+end
+
 ##############################################
 
-mesh = CartesianMesh(100)
+# mesh = CartesianMesh(100)
 
-left_state = let p=2e5, u=0.0, ξ=1.0
+# left_state = let p=2e5, u=0.0, ξ=1.0
+#     r = ρ(model, p, ξ)
+#     SVector(r, r*u, r*ξ)
+# end
+# right_state = let p=1e5, u=0.0, ξ=1.0
+#     r = ρ(model, p, ξ)
+#     SVector(r, r*u, r*ξ)
+# end
+
+# v₀ = [x[1] < 0.5 ? left_state : right_state for x in cell_centers(mesh)]
+
+# t, v = FiniteVolumes.run(EulerFlux(), mesh, v₀, time_step=FixedCourant(0.2), nb_time_steps=100)
+
+# using Plots
+# plot(mesh, [v₀ v], 1, label=["initial" "final"])
+
+##############################################
+
+mesh = CartesianMesh(40, 40)
+
+left_state = let p=2e5, ux=0.0, uy=0.0, ξ=1.0
     r = ρ(model, p, ξ)
-    SVector(r, r*u, r*ξ)
+    SVector(r, r*ux, r*uy, r*ξ)
 end
-right_state = let p=1e5, u=0.0, ξ=1.0
+right_state = let p=1e5, ux=0.0, uy=0.0, ξ=1.0
     r = ρ(model, p, ξ)
-    SVector(r, r*u, r*ξ)
+    SVector(r, r*ux, r*uy, r*ξ)
 end
 
-v₀ = [x[1] < 0.5 ? left_state : right_state for x in cell_centers(mesh)]
+v₀ = [x[1] + 2*x[2] < 1.5 ? left_state : right_state for x in cell_centers(mesh)]
+# FiniteVolumes.div(EulerFlux(), mesh, v₀)
 
-t, v = FiniteVolumes.run(EulerFlux(), mesh, v₀, time_step=FixedCourant(0.2), nb_time_steps=100)
+t, v = FiniteVolumes.run(EulerFlux(), mesh, v₀, time_step=FixedCourant(0.2), nb_time_steps=80)
 
 using Plots
-plot(mesh, [v₀ v], 1, label=["initial" "final"])
+plot(mesh, v, 1, label="final")
