@@ -22,8 +22,7 @@ end
 
     x = LinRange(grid.x_min[1], grid.x_max[1], grid.nb_cells[1])
     y = LinRange(grid.x_min[2], grid.x_max[2], grid.nb_cells[2])
-    field = reshape([wi[var] for wi in w], (grid.nb_cells[1], grid.nb_cells[2]))
-    field = permutedims(field, (2, 1))
+    field = permutedims(map(wi -> wi[var], w), (2, 1))
     x, y, field
 end
 
@@ -43,7 +42,7 @@ end
 
     x = LinRange(grid.x_min[1], grid.x_max[1], grid.nb_cells[1])
     y = LinRange(grid.x_min[2], grid.x_max[2], grid.nb_cells[2])
-    pixels = [sum(wi[vars[k]]*base_colors[k] for k in 1:N) for wi in w]
-    field = permutedims(reshape(pixels, (grid.nb_cells[1], grid.nb_cells[2])), (2, 1))
+    pixels = map(wi -> sum(wi[vars[k]]*base_colors[k] for k in 1:N), w)
+    field = permutedims(pixels, (2, 1))
     x, y, field
 end
