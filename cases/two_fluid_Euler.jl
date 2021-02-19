@@ -57,6 +57,11 @@ function invert_p_newton(m::TwoFluidMixture, ρ₀, ξ, guess)
     return Roots.find_zero((f, df), guess, Roots.Newton())
 end
 
+    # p_int = ((ρ_L*c_L*p_L + ρ_R*c_R*p_R + ρ_L*c_L*ρ_R*c_R*(ux_L - ux_R))/(ρ_L*c_L + ρ_R*c_R))
+    # ux_int = ((ρ_L*c_L*ux_L + ρ_R*c_R*ux_R + (p_L - p_R))/(ρ_L*c_L + ρ_R*c_R))
+    # uy_int = (uy_L + uy_R)/2
+    # ξ_int = (ξ_L + ξ_R)/2
+
 ##############################################
 
 const model = TwoFluidMixture(IsothermalStiffenedGas(300.0, 1.0, 1e5), IsothermalStiffenedGas(1500.0, 1000.0, 1e5))
@@ -102,6 +107,10 @@ function LinearAlgebra.eigen(::EulerFlux, v, n::Number)
                       ξ/2         (ξ*dρdξ_/ρ + 1.0)   ξ/2]
     return vals, vect
 end
+
+# @SMatrix [dρdξ*ξ/ρ + u/c + 1.0  -1.0/c  -dρdξ/ρ;
+#           -ξ  0  1;
+#           dρdξ*ξ/ρ - u/c + 1.0  1.0/c  -dρdξ/ρ]
 
 function (::EulerFlux)(v, n::SVector{2})
     ρ = v[1]
@@ -152,6 +161,11 @@ function LinearAlgebra.eigen(::EulerFlux, v, n::SVector{2})
                      ξ/2      0.0  ξ*dρdξ_/ρ+1.0 ξ/2]
     return vals, RR(n)' * vect * RR(n)
 end
+
+    # @SMatrix [dρdξ*ξ/ρ+ux/c+1.0  -1.0/c  0.0  -dρdξ/ρ;
+    #           -uy                 0.0    1.0   0.0;
+    #           -ξ                  0.0    0.0   1.0;
+    #           dρdξ*ξ/ρ-ux/c+1.0   1.0/c  0.0  -dρdξ/ρ]
 
 ##############################################
 
