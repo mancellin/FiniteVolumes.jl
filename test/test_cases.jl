@@ -3,6 +3,7 @@
 using Test
 using StaticArrays
 using FiniteVolumes
+using ForwardDiff
 import LinearAlgebra
 import FiniteVolumes.courant
 
@@ -198,14 +199,27 @@ end
     @testset "2D" begin
         mesh = PeriodicCartesianMesh(40, 40)
         flux = ShallowWater(9.8)
-        w₀ = map(x -> SVector(1.0 + exp(-500*((x[1]-0.5)^2 + (x[2]-0.5)^2)), 0.0, 0.0), cell_centers(mesh))
-        FiniteVolumes.div(flux, mesh, w₀)
-        t, w = FiniteVolumes.run(flux, mesh, w₀, time_step=FixedCourant(0.3),
+
+        # Test jacobian structure
+        for v in [SVector(1.0, 0.0, 0.0), SVector(1.0, 1.0, 1.0)], n in [SVector(1.0, 0.0), SVector(0.0, 1.0)]
+            J1 = ForwardDiff.jacobian(v -> flux(v, n), v)
+            J2 = FiniteVolumes.jacobian(flux, v, n)
+            @test J1 == J2
+            λ1 = LinearAlgebra.eigvals(Array(J1))
+            λ2 = FiniteVolumes.eigvals(flux, v, n)
+            @test λ1 ≈ λ2
+            eg1 = LinearAlgebra.eigen(Array(J1))
+            eg2 = LinearAlgebra.eigen(flux, v, n)
+        end
+
+        v₀ = map(x -> SVector(1.0 + exp(-500*((x[1]-0.5)^2 + (x[2]-0.5)^2)), 0.0, 0.0), cell_centers(mesh))
+        FiniteVolumes.div(flux, mesh, v₀)
+        t, v = FiniteVolumes.run(flux, mesh, v₀, time_step=FixedCourant(0.3),
                                  nb_time_steps=40, verbose=false)
 
-        @test total_mass(mesh, w₀) .≈ total_mass(mesh, w)
-        @test total_momentum(mesh, w₀) .≈ total_momentum(mesh, w) atol=1e-15
-        # plot(mesh, w, 1)
+        @test total_mass(mesh, v₀) .≈ total_mass(mesh, v)
+        @test total_momentum(mesh, v₀) .≈ total_momentum(mesh, v) atol=1e-15
+        # plot(mesh, v, 1)
     end
 
 end

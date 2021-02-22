@@ -53,10 +53,35 @@ end
 
 function (f::ShallowWater)(v::SVector{3}, n::SVector{2})
     h, ux, uy = v[1], v[2]/v[1], v[3]/v[1]
-    R = SMatrix{2, 2}(n[1], -n[2], n[2], n[1])
-    u_local = R * SVector(ux, uy)
-    ϕu_local = SVector(h*u_local[1]^2 + h^2 * f.g/2, h*u_local[1]*u_local[2])
-    ϕu = R' * ϕu_local
-    return SVector(h*u_local[1], ϕu[1], ϕu[2])
+    un = ux*n[1] + uy*n[2]
+    return SVector(h*un, h*ux*un + h^2*n[1]*f.g/2, h*uy*un + h^2*n[2]*f.g/2)
 end
 
+function jacobian(f::ShallowWater, v, n::SVector{2})
+    h, ux, uy = v[1], v[2]/v[1], v[3]/v[1]
+    un = ux * n[1] + uy * n[2]
+    g = f.g
+    @SMatrix [0                 n[1]        n[2];
+              -ux*un+g*h*n[1]   un+ux*n[1]  ux*n[2];
+              -uy*un+g*h*n[2]   uy*n[1]     un+uy*n[2]]
+end
+
+function LinearAlgebra.eigvals(f::ShallowWater, v, n::SVector{2})
+    h, ux, uy = v[1], v[2]/v[1], v[3]/v[1]
+    un = ux * n[1] + uy * n[2]
+    g = f.g
+    c = sqrt(g*h)
+    return SVector(un - c, un, un + c)
+end
+
+function LinearAlgebra.eigen(f::ShallowWater, v, n::SVector{2})
+    h, ux, uy = v[1], v[2]/v[1], v[3]/v[1]
+    un = ux * n[1] + uy * n[2]
+    g = f.g
+    c = sqrt(g*h)
+    vals = SVector(un - c, un, un + c)
+    vects = 1/2 .* @SMatrix [1.0                   n[2]                                     n[1];
+                             n[1]*(ux-c)+n[2]*uy   n[2]*(2n[1] + n[1]*(ux+c) + n[2]*uy)     -2n[2]^2 + n[1]*(n[2]*uy + n[1]*(ux+c));
+                             n[1]*uy-n[2]*(ux-c)   2n[1]^2 + n[2]*(n[1]*uy - n[2]*(ux+c))   n[1]*(-2n[2] + n[1]*uy - n[2]*(ux+c))]
+    return vals, vects 
+end
