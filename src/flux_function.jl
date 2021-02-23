@@ -77,11 +77,12 @@ end
 function LinearAlgebra.eigen(f::ShallowWater, v, n::SVector{2})
     h, ux, uy = v[1], v[2]/v[1], v[3]/v[1]
     un = ux * n[1] + uy * n[2]
+    ut = -ux * n[2] + uy * n[1]
     g = f.g
     c = sqrt(g*h)
     vals = SVector(un - c, un, un + c)
-    vects = 1/2 .* @SMatrix [1.0                   n[2]                                     n[1];
-                             n[1]*(ux-c)+n[2]*uy   n[2]*(2n[1] + n[1]*(ux+c) + n[2]*uy)     -2n[2]^2 + n[1]*(n[2]*uy + n[1]*(ux+c));
-                             n[1]*uy-n[2]*(ux-c)   2n[1]^2 + n[2]*(n[1]*uy - n[2]*(ux+c))   n[1]*(-2n[2] + n[1]*uy - n[2]*(ux+c))]
+    vects = 0.5 .* @SMatrix [1.0                    0.0   1.0;
+                             n[1]*(un-c) + n[2]*ut  n[2]  n[1]*(c+un) + n[2]*ut;
+                             n[1]*ut + n[2]*(un-c)  n[1]  n[1]*ut + n[2]*(c+un)]
     return vals, vects 
 end

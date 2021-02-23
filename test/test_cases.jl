@@ -201,15 +201,18 @@ end
         flux = ShallowWater(9.8)
 
         # Test jacobian structure
-        for v in [SVector(1.0, 0.0, 0.0), SVector(1.0, 1.0, 1.0)], n in [SVector(1.0, 0.0), SVector(0.0, 1.0)]
+        for v in [SVector(1.0, 0.0, 0.0), SVector(1.0, 1.0, 1.0)], n in [SVector(1.0, 0.0), SVector(0.0, 1.0), sqrt(2)/2*SVector(1.0, 1.0)]
             J1 = ForwardDiff.jacobian(v -> flux(v, n), v)
             J2 = FiniteVolumes.jacobian(flux, v, n)
             @test J1 == J2
             λ1 = LinearAlgebra.eigvals(Array(J1))
             λ2 = FiniteVolumes.eigvals(flux, v, n)
             @test λ1 ≈ λ2
-            eg1 = LinearAlgebra.eigen(Array(J1))
-            eg2 = LinearAlgebra.eigen(flux, v, n)
+            eg1 = LinearAlgebra.eigen(Array(J1)).vectors
+            eg2 = LinearAlgebra.eigen(flux, v, n)[2]
+            for (c1, c2) in zip(eachcol(eg1), eachcol(eg2))
+                @test maximum(abs.(c2)) .* abs.(c1) ≈ maximum(abs.(c1)) .* abs.(c2)
+            end
         end
 
         v₀ = map(x -> SVector(1.0 + exp(-500*((x[1]-0.5)^2 + (x[2]-0.5)^2)), 0.0, 0.0), cell_centers(mesh))
