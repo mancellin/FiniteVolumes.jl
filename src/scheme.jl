@@ -107,7 +107,7 @@ end
 #                                     Div                                      #
 ################################################################################
 
-function div!(Δw, flux, mesh, w, numerical_flux::NumericalFlux, dt)
+function div!(Δw, flux, mesh, w, numerical_flux::NumericalFlux, dt=0.0)
     @inbounds for i_face in inner_faces(mesh)
         ϕ = numerical_flux(flux, mesh, w, i_face, dt)
         i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
@@ -116,7 +116,7 @@ function div!(Δw, flux, mesh, w, numerical_flux::NumericalFlux, dt)
     end
 end
 
-function div!(Δw, flux, mesh, w, boundary_flux::BoundaryCondition, dt)
+function div!(Δw, flux, mesh, w, boundary_flux::BoundaryCondition, dt=0.0)
     @inbounds for i_face in boundary_faces(mesh)
         ϕ = boundary_flux(flux, mesh, w, i_face, dt)
         i_cell = cell_next_to_boundary_face(mesh, i_face)
@@ -127,22 +127,28 @@ end
 flux_in_cell(flux, mesh, w, scheme, dt, i_face, i_cell) = scheme(flux, mesh, w, i_face, dt) * face_area(mesh, i_face) / cell_volume(mesh, i_cell)
 Δw_type(flux, mesh, w, scheme, dt) = Base.return_types(flux_in_cell, typeof.((flux, mesh, w, scheme, dt, first(inner_faces(mesh)), first(all_cells(mesh)))))[1]
 
-function div(flux, mesh, w; time_step=0.0, numerical_flux=Upwind(), boundary_flux=NeumannBC())
-    Δw = zeros(Δw_type(flux, mesh, w, numerical_flux, time_step), size(w))
-    div!(Δw, flux, mesh, w, numerical_flux, time_step)
-    div!(Δw, flux, mesh, w, boundary_flux, time_step)
+function div(flux, mesh, w, numerical_flux::Union{NumericalFlux, BoundaryCondition}, dt=0.0)
+    Δw = zeros(Δw_type(flux, mesh, w, numerical_flux, dt), size(w))
+    div!(Δw, flux, mesh, w, numerical_flux, dt)
     return Δw
 end
 
-function numerical_fluxes!(Φ, flux, mesh, w, numerical_flux::NumericalFlux, dt)
+function div(flux, mesh, w, dt=0.0; numerical_flux=Upwind(), boundary_flux=NeumannBC())
+    Δw = zeros(Δw_type(flux, mesh, w, numerical_flux, dt), size(w))
+    div!(Δw, flux, mesh, w, numerical_flux, dt)
+    div!(Δw, flux, mesh, w, boundary_flux, dt)
+    return Δw
+end
+
+function numerical_fluxes!(Φ, flux, mesh, w, numerical_flux::NumericalFlux, dt=0.0)
     map!(i_face -> numerical_flux(flux, mesh, w, i_face, dt), Φ, collect(inner_faces(mesh)))
 end
 
-function numerical_fluxes(flux, mesh, w, numerical_flux::NumericalFlux, dt)
-    map(i_face -> numerical_flux(flux, mesh, w, i_face, dt), inner_faces(mesh))
+function numerical_fluxes(flux, mesh, w, numerical_flux::NumericalFlux, dt=0.0)
+    map(i_face -> numerical_flux(flux, mesh, w, i_face, dt), collect(inner_faces(mesh)))
 end
 
-function update!(w, Φ, mesh, dt)
+function update!(w, Φ, mesh, dt=0.0)
     for (i, face) in enumerate(inner_faces(mesh))
         i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, face)
         w[i_cell_1] -= dt*Φ[i] * face_area(mesh, face) / cell_volume(mesh, i_cell_1)
