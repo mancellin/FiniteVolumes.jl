@@ -1,7 +1,7 @@
 using RecipesBase
 using ColorTypes
 
-@recipe function plot(grid::AbstractCartesianMesh{1}, w, var)
+@recipe function plot(grid::AbstractCartesianMesh{1}, w, var=1)
     seriestype := :steppre
     if var isa Symbol
         title --> var
@@ -12,7 +12,7 @@ using ColorTypes
     x, data
 end
 
-@recipe function plot(grid::AbstractCartesianMesh{2}, w, var)
+@recipe function plot(grid::AbstractCartesianMesh{2}, w, var=1)
     seriestype := :heatmap
     seriescolor --> :viridis
     aspect_ratio --> 1

@@ -19,8 +19,9 @@ prob = ODEProblem(dwdt, w₀, (0, 0.1))
 sol = solve(prob, ImplicitEuler(), dt=0.01, saveat=0.01)
 
 plot(
-     plot(mesh, sol(0.0), 1, clims=(0, 1)),
-     plot(mesh, sol(0.033), 1, clims=(0, 1)),
-     plot(mesh, sol(0.066), 1, clims=(0, 1)),
-     plot(mesh, sol(0.1), 1, clims=(0, 1)),
+     plot(mesh, sol(0.0)),
+     plot(mesh, sol(0.033)),
+     plot(mesh, sol(0.066)),
+     plot(mesh, sol(0.1)),
+     clims=(0, 1)
     )
