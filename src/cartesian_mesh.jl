@@ -50,10 +50,14 @@ dx(mesh::AbstractCartesianMesh) = @. (mesh.x_max - mesh.x_min)/mesh.nb_cells
 nb_cells(mesh::AbstractCartesianMesh) = prod(mesh.nb_cells)
 all_cells(mesh::AbstractCartesianMesh) = CartesianIndices(Tuple(mesh.nb_cells))
 
+nb_inner_faces(mesh::CartesianMesh{1}) = mesh.nb_cells[1] - 1
 inner_faces(mesh::CartesianMesh{1}) = ((Half(n),) for n in 3:2:2*mesh.nb_cells[1])
+nb_boundary_faces(mesh::CartesianMesh{1}) = 2
 boundary_faces(mesh::CartesianMesh{1}) = ((Half(1),), (Half(2*mesh.nb_cells[1]+1),))
 
+nb_inner_faces(mesh::PeriodicCartesianMesh{1}) = mesh.nb_cells[1]
 inner_faces(mesh::PeriodicCartesianMesh{1}) = ((Half(n),) for n in 1:2:2*mesh.nb_cells[1])
+nb_boundary_faces(mesh::PeriodicCartesianMesh{1}) = 0
 boundary_faces(mesh::PeriodicCartesianMesh{1}) = Tuple([]) 
 
 const _left = (-Half(1), Half(0))
@@ -67,10 +71,14 @@ _right_cells(mesh::CartesianMesh{2}) = ((n, m) = mesh.nb_cells; CartesianIndices
 
 _face(dir, cell::CartesianIndex{2}) = Half.(2 .* Tuple(cell)) .+ dir
 
+nb_inner_faces(mesh::CartesianMesh{2}) = 2 * mesh.nb_cells[1] * mesh.nb_cells[2] - mesh.nb_cells[1] - mesh.nb_cells[2]
 inner_faces(mesh::CartesianMesh{2}) = ((n, m) = mesh.nb_cells; (_face(dir, cell) for (dir, cells) in ((_right, CartesianIndices((1:(n-1), 1:m))), (_up, CartesianIndices((1:n, 1:(m-1))))) for cell in cells))
+nb_boundary_faces(mesh::CartesianMesh{2}) = 2 * (mesh.nb_cells[1] + mesh.nb_cells[2])
 boundary_faces(mesh::CartesianMesh{2}) = (_face(dir, cell) for (dir, cells) in ((_down, _bottom_cells(mesh)), (_right, _right_cells(mesh)), (_up, _top_cells(mesh)), (_left, _left_cells(mesh))) for cell in cells)
 
+nb_inner_faces(mesh::PeriodicCartesianMesh{2}) = 2 * mesh.nb_cells[1] * mesh.nb_cells[2]
 inner_faces(mesh::PeriodicCartesianMesh{2}) = (_face(dir, cell) for cell in CartesianIndices(Tuple(mesh.nb_cells)) for dir in (_down, _left))
+nb_boundary_faces(mesh::PeriodicCartesianMesh{2}) = 0
 boundary_faces(mesh::PeriodicCartesianMesh{2}) = Tuple([])
 
 _direction(i_face::NTuple{2, Half{Int}}) = is_int(i_face[1]) ? 2 : 1

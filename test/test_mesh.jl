@@ -18,7 +18,11 @@ using FiniteVolumes: Half
 
     @test FiniteVolumes.inner_faces(CartesianMesh(2)) |> collect |> length == 1
     @test FiniteVolumes.inner_faces(PeriodicCartesianMesh(10, 10)) |> collect |> length == 200
-    # @test FiniteVolumes.inner_faces(CartesianMesh(5, 2)) |> collect |> length == 27
+
+    for m in [CartesianMesh(10), PeriodicCartesianMesh(3), CartesianMesh(5, 2), PeriodicCartesianMesh(10, 4)]
+        @test FiniteVolumes.inner_faces(m) |> collect |> length == FiniteVolumes.nb_inner_faces(m)
+        @test FiniteVolumes.boundary_faces(m) |> collect |> length == FiniteVolumes.nb_boundary_faces(m)
+    end
 
     @test FiniteVolumes.boundary_faces(CartesianMesh(2)) |> collect |> length == 2
     # @test FiniteVolumes.boundary_faces(CartesianMesh(5, 5)) |> collect |> length == 20
