@@ -2,6 +2,7 @@ module FiniteVolumes
 
 using LinearAlgebra
 using StaticArrays
+using SparseArrays
 
 include("./cartesian_mesh.jl")
 export CartesianMesh, PeriodicCartesianMesh, cell_centers

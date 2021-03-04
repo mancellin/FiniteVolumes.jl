@@ -66,4 +66,26 @@ end
     @test FiniteVolumes.courant(1.0, right_flux, mesh, [1.0, 1.0]) == 2.0
 end
 
+@testset "Div" begin
+    # 1D
+    flux = LinearAdvectionFlux(2.0)
+    mesh = PeriodicCartesianMesh(45)
+    dt = 0.4*FiniteVolumes.dx(mesh)[1]
+    w0 = rand(FiniteVolumes.nb_cells(mesh))
+    D = FiniteVolumes.inner_faces_to_cells_matrix(mesh)
+    Δw1 = D * FiniteVolumes.numerical_fluxes(flux, mesh, w0, Upwind(), dt)
+    Δw2 = -FiniteVolumes.div(flux, mesh, w0, Upwind(), dt)
+    @test Δw1 ≈ Δw2
+
+    # 2D
+    flux = LinearAdvectionFlux([9.0, 4.0])
+    mesh = PeriodicCartesianMesh(5, 8)
+    dt = 0.4*FiniteVolumes.dx(mesh)[1]
+    w0 = rand(size(FiniteVolumes.cell_centers(mesh))...)
+    D = FiniteVolumes.inner_faces_to_cells_matrix(mesh)
+    Δw1 = D * FiniteVolumes.numerical_fluxes(flux, mesh, w0, Upwind(), dt)
+    Δw2 = -FiniteVolumes.div(flux, mesh, w0, Upwind(), dt)
+    @test reshape(Δw1, Tuple(mesh.nb_cells)) ≈ Δw2
+end
+
 end
