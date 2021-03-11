@@ -17,6 +17,7 @@ end
 LinearAdvectionFlux(v::AbstractArray) = LinearAdvectionFlux{SVector{length(v), eltype(v)}}(SVector(v...))
 
 (f::LinearAdvectionFlux)(w, n) = w * (f.velocity' * n)
+jacobian(f::LinearAdvectionFlux, w, n) = f.velocity' * n
 LinearAlgebra.eigvals(f::LinearAdvectionFlux, w, n) = f.velocity' * n
 
 function directional_splitting(f::LinearAdvectionFlux{T}) where T<:SVector{2}
