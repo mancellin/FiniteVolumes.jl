@@ -125,7 +125,14 @@ function div!(Δw, flux, mesh, w, boundary_flux::BoundaryCondition, dt=0.0)
 end
 
 flux_in_cell(flux, mesh, w, scheme, dt, i_face, i_cell) = scheme(flux, mesh, w, i_face, dt) * face_area(mesh, i_face) / cell_volume(mesh, i_cell)
-Δw_type(flux, mesh, w, scheme, dt) = Base.return_types(flux_in_cell, typeof.((flux, mesh, w, scheme, dt, first(inner_faces(mesh)), first(all_cells(mesh)))))[1]
+function Δw_type(flux, mesh, w, scheme, dt)
+    T = Base.return_types(flux_in_cell, typeof.((flux, mesh, w, scheme, dt, first(inner_faces(mesh)), first(all_cells(mesh)))))[1]
+    if T in (Union{}, Any)
+        return eltype(w)
+    else
+        return T
+    end
+end
 
 function div(flux, mesh, w, numerical_flux::Union{NumericalFlux, BoundaryCondition}, dt=0.0)
     Δw = zeros(Δw_type(flux, mesh, w, numerical_flux, dt), size(w))
