@@ -9,7 +9,7 @@ function courant(Δt, flux, mesh, w, i_face)
 end
 
 function courant(Δt, flux, mesh, w)
-    c = 0.0
+    c = zero(eltype(Δt))
     for i_face in inner_faces(mesh)
         c = max(c, courant(Δt, flux, mesh, w, i_face))
     end

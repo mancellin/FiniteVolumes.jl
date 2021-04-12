@@ -17,7 +17,7 @@ function run!(fluxes::Tuple, mesh, w, t; nb_time_steps, time_step, verbose=true,
     for i_time_step in 1:nb_time_steps
 
         if time_step isa FixedCourant
-            dt = minimum(time_step.fixed_courant/courant(1.0, f, mesh, w) for f in fluxes)
+            dt = minimum(time_step.fixed_courant/courant(one(eltype(t)), f, mesh, w) for f in fluxes)
         else
             dt = time_step
         end
@@ -50,9 +50,9 @@ function run!(fluxes::Tuple, mesh, w, t; nb_time_steps, time_step, verbose=true,
     return t
 end
 
-function run(flux, mesh, w₀; kwargs...)
+function run(flux, mesh, w₀; t=0.0, kwargs...)
 	w = deepcopy(w₀)
-    t = run!(flux, mesh, w, 0.0; kwargs...)
+    t = run!(flux, mesh, w, t; kwargs...)
 	return t, w
 end
 
