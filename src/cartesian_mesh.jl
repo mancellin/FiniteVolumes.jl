@@ -22,9 +22,9 @@ abstract type FiniteVolumeMesh end
 cell_centers(mesh) = map(i -> cell_center(mesh, i), all_cells(mesh))
 cells_centers(mesh) = cell_centers(mesh)
 
-#############################################
-abstract type AbstractCartesianMesh{D, L} end
-#############################################
+#################################################################
+abstract type AbstractCartesianMesh{D, L} <: FiniteVolumeMesh end
+#################################################################
 
 #########################################################
 struct CartesianMesh{D, L} <: AbstractCartesianMesh{D, L}
