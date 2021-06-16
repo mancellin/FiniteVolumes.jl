@@ -14,6 +14,9 @@ export directional_splitting
 include("./scheme.jl")
 export Upwind, NeumannBC
 
+include("./diffusion.jl")
+export DiffusionFlux
+
 include("./courant.jl")
 
 include("./euler_explicit.jl")
