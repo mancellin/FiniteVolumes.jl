@@ -46,6 +46,8 @@ PeriodicCartesianMesh(x_min::Number, x_max::Number, nb_cells::Int) = PeriodicCar
 PeriodicCartesianMesh(nb_cells::Int) = PeriodicCartesianMesh{1, Float64}(SVector(0.0), SVector(1.0), (nb_cells,))
 PeriodicCartesianMesh(nx::Int, ny::Int) = PeriodicCartesianMesh{2, Float64}(SVector(0.0, 0.0), SVector(1.0, 1.0), (nx, ny))
 
+nb_dims(mesh::AbstractCartesianMesh{D}) where D = D
+
 dx(mesh::AbstractCartesianMesh) = @. (mesh.x_max - mesh.x_min)/mesh.nb_cells
 
 nb_cells(mesh::AbstractCartesianMesh) = prod(mesh.nb_cells)

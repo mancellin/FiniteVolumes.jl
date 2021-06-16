@@ -107,7 +107,9 @@ end
 #                                     Div                                      #
 ################################################################################
 
-function div!(Δw, flux, mesh, w, numerical_flux::NumericalFlux, dt=0.0)
+div!(Δw, flux, mesh, w, args...) = div!(Δw, FluxFunction{eltype(w), nb_dims(mesh), typeof(flux)}(flux), mesh, w, args...)
+
+function div!(Δw, flux::AbstractFlux, mesh, w, numerical_flux::NumericalFlux, dt=0.0)
     @inbounds for i_face in inner_faces(mesh)
         ϕ = numerical_flux(flux, mesh, w, i_face, dt)
         i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
@@ -116,7 +118,7 @@ function div!(Δw, flux, mesh, w, numerical_flux::NumericalFlux, dt=0.0)
     end
 end
 
-function div!(Δw, flux, mesh, w, boundary_flux::BoundaryCondition, dt=0.0)
+function div!(Δw, flux::AbstractFlux, mesh, w, boundary_flux::BoundaryCondition, dt=0.0)
     @inbounds for i_face in boundary_faces(mesh)
         ϕ = boundary_flux(flux, mesh, w, i_face, dt)
         i_cell = cell_next_to_boundary_face(mesh, i_face)
