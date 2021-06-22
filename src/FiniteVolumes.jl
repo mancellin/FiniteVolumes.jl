@@ -24,4 +24,6 @@ export FixedCourant
 
 include("./plot_recipes.jl")
 
+include("./experimental.jl")
+
 end
