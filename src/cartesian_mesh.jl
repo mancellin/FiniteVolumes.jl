@@ -84,7 +84,7 @@ inner_faces(mesh::PeriodicCartesianMesh{2}) = (_face(dir, cell) for cell in Cart
 nb_boundary_faces(mesh::PeriodicCartesianMesh{2}) = 0
 boundary_faces(mesh::PeriodicCartesianMesh{2}) = Tuple([])
 
-_direction(i_face::NTuple{2, Half{Int}}) = is_int(i_face[1]) ? 2 : 1
+_direction(i_face::NTuple{2, Half{Int}}) = is_int(i_face[1]) ? 2 : 1  # 1 = horizontal, 2 = vertical
 
 cells_next_to_inner_face(mesh::CartesianMesh{1}, i_face) = (CartesianIndex(Int(i_face[1])), CartesianIndex(Int(i_face[1]) + 1))
 function cells_next_to_inner_face(mesh::PeriodicCartesianMesh{1}, i_face)
