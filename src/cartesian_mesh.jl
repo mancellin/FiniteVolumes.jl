@@ -36,6 +36,8 @@ CartesianMesh(x_min::Number, x_max::Number, nb_cells::Int) = CartesianMesh{1, ty
 CartesianMesh(nb_cells::Int) = CartesianMesh{1, Float64}(SVector(0.0), SVector(1.0), (nb_cells,))
 CartesianMesh(nx::Int, ny::Int) = CartesianMesh{2, Float64}(SVector(0.0, 0.0), SVector(1.0, 1.0), (nx, ny))
 
+CartesianMesh(x_min::NTuple{N}, x_max::NTuple{N}, nb_cells::NTuple{N, Int64}) where N = CartesianMesh{N, eltype(x_min)}(SVector(x_min...), SVector(x_max...), SVector(nb_cells...))
+
 #################################################################
 struct PeriodicCartesianMesh{D, L} <: AbstractCartesianMesh{D, L}
     x_min::SVector{D, L}
@@ -45,6 +47,8 @@ end
 PeriodicCartesianMesh(x_min::Number, x_max::Number, nb_cells::Int) = PeriodicCartesianMesh{1, typeof(x_min)}(SVector(x_min), SVector(x_max), (nb_cells,))
 PeriodicCartesianMesh(nb_cells::Int) = PeriodicCartesianMesh{1, Float64}(SVector(0.0), SVector(1.0), (nb_cells,))
 PeriodicCartesianMesh(nx::Int, ny::Int) = PeriodicCartesianMesh{2, Float64}(SVector(0.0, 0.0), SVector(1.0, 1.0), (nx, ny))
+
+PeriodicCartesianMesh(x_min::NTuple{N}, x_max::NTuple{N}, nb_cells::NTuple{N, Int64}) where N = PeriodicCartesianMesh{N, eltype(x_min)}(SVector(x_min...), SVector(x_max...), SVector(nb_cells...))
 
 nb_dims(mesh::AbstractCartesianMesh{D}) where D = D
 
