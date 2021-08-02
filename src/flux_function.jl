@@ -27,6 +27,7 @@ end
 
 ##############################
 
+# ! SCALAR FLUX FUNCTION ONLY
 struct FluxFunction{T, D, F} <: AbstractFlux
     # T = datatype
     # D = space dimension
