@@ -1,3 +1,6 @@
+# A simple Euler explicit time stepping method to use and test the other
+# methods of the package without requiring a full ODE solver.
+
 import ProgressMeter
 
 struct FixedCourant{T}
@@ -23,13 +26,6 @@ function run!(fluxes::Tuple, mesh, w, t; nb_time_steps, time_step, verbose=true,
         end
 
         for f in fluxes
-            # using_conservative_variables!(m, w) do v
-            #     v .-= dt * div(m, mesh, w; dt=dt, kwargs...)
-            # end
-            # v(w) = compute_v(m, w)
-            # v⁻¹(v) = invert_v(m, v)
-            # Δv = div(m, mesh, w; dt=dt, kwargs...)
-            # w .= v⁻¹.(v.(w) .- dt.*Δv)
             Δw .= zeros(eltype(Δw), size(Δw))
             div!(Δw, f, mesh, w, numerical_flux, dt)
             div!(Δw, f, mesh, w, boundary_flux, dt)
