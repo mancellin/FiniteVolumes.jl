@@ -16,9 +16,9 @@ function courant(Δt, flux, mesh, w)
     return c
 end
 
-function courant(Δt, flux::LinearAdvectionFlux, mesh::AbstractCartesianMesh{1}, w)
-    return abs(flux.velocity[1]) * Δt / FiniteVolumes.CartesianMeshes.dx(mesh)[1]
-end
+# function courant(Δt, flux::LinearAdvectionFlux, mesh::AbstractCartesianMesh{1}, w)
+#     return abs(flux.velocity[1]) * Δt / FiniteVolumes.CartesianMeshes.dx(mesh)[1]
+# end
 
 # function courant(Δt, flux::LinearAdvectionFlux, mesh::PeriodicRegularMesh2D, w)
 #     vx, vy = model.velocity

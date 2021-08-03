@@ -183,4 +183,6 @@ function normal_vector(mesh::AbstractCartesianMesh{N, T}, i_face) where {N, T}
     end
 end
 
+include("./plot_recipes.jl")
+
 end # module
