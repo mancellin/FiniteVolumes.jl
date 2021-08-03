@@ -11,6 +11,6 @@ function (::Centered)(::DiffusionFlux, mesh::AbstractCartesianMesh, w, i_face)
         face_dir = FiniteVolumes.CartesianMeshes._direction(i_face)
     end
     i_cell_1, i_cell_2 = FiniteVolumes.cells_next_to_inner_face(mesh, i_face)
-    return (w[i_cell_2] - w[i_cell_1])*n[face_dir]/FiniteVolumes.dx(mesh)[face_dir]
+    return (w[i_cell_2] - w[i_cell_1])*n[face_dir]/FiniteVolumes.CartesianMeshes.dx(mesh)[face_dir]
 end
 

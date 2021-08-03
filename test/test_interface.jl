@@ -63,4 +63,13 @@ using FiniteVolumes
         @test all(0.0 .<= sol2.u[end] .<= 1.0)
         @test all(0.0 .<= sol2.u[end] .<= 1.0)
     end
+
+    @testset "Implicit heat equation" begin
+        using OrdinaryDiffEq
+        mesh = PeriodicCartesianMesh(10)
+        w₀ = map(x -> exp(-1000*(x - 0.5)^2), cell_centers(mesh))
+        dwdt(w, p, t) = -FiniteVolumes.div(FiniteVolumes.∇, mesh, w, FiniteVolumes.Centered())
+        prob = ODEProblem(dwdt, w₀, (0, 0.1))
+        sol = solve(prob, ImplicitEuler(), dt=0.02, saveat=0.02)
+    end
 end
