@@ -58,36 +58,6 @@ function (::Upwind)(flux, mesh, w, i_face)
     end
 end
 
-# function in_local_coordinates(f, model, mesh, w, i_face)
-#     i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
-#     w₁ = rotate_state(w[i_cell_1], model, rotation_matrix(mesh, i_face))
-#     w₂ = rotate_state(w[i_cell_2], model, rotation_matrix(mesh, i_face))
-#     local_model = rotate_model(model, rotation_matrix(mesh, i_face), face_center(mesh, i_face))
-#     ϕ = f(local_model, w₁, w₂)
-#     return rotate_flux(ϕ, model, transpose(rotation_matrix(mesh, i_face)))
-# end
-
-# function (::Upwind)(model, mesh, w, i_face)  # l-upwind FVCF
-#     in_local_coordinates(model, mesh, w, i_face) do local_model, w₁, w₂
-#         flux₁ = normal_flux(local_model, w₁)
-#         flux₂ = normal_flux(local_model, w₂)
-
-#         w_int = compute_w_int(local_model, w₁, w₂)
-#         λ = eigenvalues(local_model, w_int)
-
-#         L₁ = left_eigenvectors(local_model, w₁)
-#         L₂ = left_eigenvectors(local_model, w₂)
-
-#         L_upwind = ifelse.(λ .> 0.0, L₁, L₂)
-#         L_flux_upwind = ifelse.(λ .> 0.0, L₁ * flux₁, L₂ * flux₂)
-
-#         ϕ = L_upwind \ L_flux_upwind
-#         return ϕ
-#     end
-# end
-
-# BC
-
 ###################################
 abstract type BoundaryCondition end
 ###################################
