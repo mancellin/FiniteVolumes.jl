@@ -22,6 +22,9 @@ abstract type FiniteVolumeMesh end
 cell_centers(mesh) = map(i -> cell_center(mesh, i), all_cells(mesh))
 cells_centers(mesh) = cell_centers(mesh)
 
+const FaceIndex{N} = NTuple{N, Half{Int}}
+const CellIndex{N} = CartesianIndex{N}
+
 #################################################################
 abstract type AbstractCartesianMesh{D, L} <: FiniteVolumeMesh end
 #################################################################
@@ -35,6 +38,7 @@ end
 CartesianMesh(x_min::Number, x_max::Number, nb_cells::Int) = CartesianMesh{1, typeof(x_min)}(SVector(x_min), SVector(x_max), (nb_cells,))
 CartesianMesh(nb_cells::Int) = CartesianMesh{1, Float64}(SVector(0.0), SVector(1.0), (nb_cells,))
 CartesianMesh(nx::Int, ny::Int) = CartesianMesh{2, Float64}(SVector(0.0, 0.0), SVector(1.0, 1.0), (nx, ny))
+CartesianMesh(nx::Int, ny::Int, nz::Int) = CartesianMesh{3, Float64}(SVector(0.0, 0.0, 0.0), SVector(1.0, 1.0, 1.0), (nx, ny, nz))
 
 CartesianMesh(x_min::NTuple{N}, x_max::NTuple{N}, nb_cells::NTuple{N, Int64}) where N = CartesianMesh{N, eltype(x_min)}(SVector(x_min...), SVector(x_max...), SVector(nb_cells...))
 
@@ -47,6 +51,7 @@ end
 PeriodicCartesianMesh(x_min::Number, x_max::Number, nb_cells::Int) = PeriodicCartesianMesh{1, typeof(x_min)}(SVector(x_min), SVector(x_max), (nb_cells,))
 PeriodicCartesianMesh(nb_cells::Int) = PeriodicCartesianMesh{1, Float64}(SVector(0.0), SVector(1.0), (nb_cells,))
 PeriodicCartesianMesh(nx::Int, ny::Int) = PeriodicCartesianMesh{2, Float64}(SVector(0.0, 0.0), SVector(1.0, 1.0), (nx, ny))
+PeriodicCartesianMesh(nx::Int, ny::Int, nz::Int) = PeriodicCartesianMesh{3, Float64}(SVector(0.0, 0.0, 0.0), SVector(1.0, 1.0, 1.0), (nx, ny, nz))
 
 PeriodicCartesianMesh(x_min::NTuple{N}, x_max::NTuple{N}, nb_cells::NTuple{N, Int64}) where N = PeriodicCartesianMesh{N, eltype(x_min)}(SVector(x_min...), SVector(x_max...), SVector(nb_cells...))
 
@@ -57,6 +62,7 @@ dx(mesh::AbstractCartesianMesh) = @. (mesh.x_max - mesh.x_min)/mesh.nb_cells
 nb_cells(mesh::AbstractCartesianMesh) = prod(mesh.nb_cells)
 all_cells(mesh::AbstractCartesianMesh) = CartesianIndices(Tuple(mesh.nb_cells))
 
+# INNER FACES
 nb_inner_faces(mesh::CartesianMesh{1}) = mesh.nb_cells[1] - 1
 inner_faces(mesh::CartesianMesh{1}) = ((Half(n),) for n in 3:2:2*mesh.nb_cells[1])
 nb_boundary_faces(mesh::CartesianMesh{1}) = 2
@@ -67,70 +73,69 @@ inner_faces(mesh::PeriodicCartesianMesh{1}) = ((Half(n),) for n in 1:2:2*mesh.nb
 nb_boundary_faces(mesh::PeriodicCartesianMesh{1}) = 0
 boundary_faces(mesh::PeriodicCartesianMesh{1}) = Tuple([]) 
 
-const _left = (-Half(1), Half(0))
-const _right = (Half(1), Half(0))
-const _down = (Half(0), -Half(1))
-const _up = (Half(0), Half(1))
+const _left = (-Half(1), Half(0), Half(0))
+const _right = (Half(1), Half(0), Half(0))
+const _down = (Half(0), -Half(1), Half(0))
+const _up = (Half(0), Half(1), Half(0))
+const _back = (Half(0), Half(0), -Half(1))
+const _front = (Half(0), Half(0), Half(1))
 _bottom_cells(mesh::CartesianMesh{2}) = ((n, m) = mesh.nb_cells; CartesianIndices((1:n, 1:1)))
 _top_cells(mesh::CartesianMesh{2}) = ((n, m) = mesh.nb_cells; CartesianIndices((1:n, m:m)))
 _left_cells(mesh::CartesianMesh{2}) = ((n, m) = mesh.nb_cells; CartesianIndices((1:1, 1:m)))
 _right_cells(mesh::CartesianMesh{2}) = ((n, m) = mesh.nb_cells; CartesianIndices((n:n, 1:m)))
 
-_face(dir, cell::CartesianIndex{2}) = Half.(2 .* Tuple(cell)) .+ dir
+_face(dir, cell::CellIndex{N}) where N = Half.(2 .* Tuple(cell)) .+ dir[1:N]
 
 nb_inner_faces(mesh::CartesianMesh{2}) = 2 * mesh.nb_cells[1] * mesh.nb_cells[2] - mesh.nb_cells[1] - mesh.nb_cells[2]
 inner_faces(mesh::CartesianMesh{2}) = ((n, m) = mesh.nb_cells; (_face(dir, cell) for (dir, cells) in ((_right, CartesianIndices((1:(n-1), 1:m))), (_up, CartesianIndices((1:n, 1:(m-1))))) for cell in cells))
 nb_boundary_faces(mesh::CartesianMesh{2}) = 2 * (mesh.nb_cells[1] + mesh.nb_cells[2])
 boundary_faces(mesh::CartesianMesh{2}) = (_face(dir, cell) for (dir, cells) in ((_down, _bottom_cells(mesh)), (_right, _right_cells(mesh)), (_up, _top_cells(mesh)), (_left, _left_cells(mesh))) for cell in cells)
 
-nb_inner_faces(mesh::PeriodicCartesianMesh{2}) = 2 * mesh.nb_cells[1] * mesh.nb_cells[2]
-inner_faces(mesh::PeriodicCartesianMesh{2}) = (_face(dir, cell) for cell in CartesianIndices(Tuple(mesh.nb_cells)) for dir in (_down, _left))
-nb_boundary_faces(mesh::PeriodicCartesianMesh{2}) = 0
-boundary_faces(mesh::PeriodicCartesianMesh{2}) = Tuple([])
+nb_inner_faces(mesh::PeriodicCartesianMesh) = 2 * prod(mesh.nb_cells)
+inner_faces(mesh::PeriodicCartesianMesh{N}) where N = (_face(dir, cell) for cell in CartesianIndices(Tuple(mesh.nb_cells)) for dir in (_left, _down, _back)[1:N])
+nb_boundary_faces(mesh::PeriodicCartesianMesh) = 0
+boundary_faces(mesh::PeriodicCartesianMesh) = Tuple([])
 
-_direction(i_face::NTuple{2, Half{Int}}) = is_int(i_face[1]) ? 2 : 1  # 1 = horizontal, 2 = vertical
+# CELLS NEXT TO FACE
+_direction(i_face::FaceIndex{1}) = 1
+_direction(i_face::FaceIndex{2}) = !is_int(i_face[1]) ? 1 : 2  # 1 = horizontal, 2 = vertical
+_direction(i_face::FaceIndex{3}) = !is_int(i_face[1]) ? 1 : !is_int(i_face[2]) ? 2 : 3
 
-cells_next_to_inner_face(mesh::CartesianMesh{1}, i_face) = (CartesianIndex(Int(i_face[1])), CartesianIndex(Int(i_face[1]) + 1))
-function cells_next_to_inner_face(mesh::PeriodicCartesianMesh{1}, i_face)
-    if i_face == (Half(1),)
-        (CartesianIndex(mesh.nb_cells[1]), CartesianIndex(1))
+_dir_step(i_face::FaceIndex{1}) = (1,)
+_dir_step(i_face::FaceIndex{2}) = _direction(i_face) == 1 ? (1, 0) : (0, 1)
+_dir_step(i_face::FaceIndex{3}) = _direction(i_face) == 1 ? (1, 0, 0) : _direction(i_face) == 2 ? (0, 1, 0) : (0, 0, 1)
+
+_cells_next(i_face::FaceIndex{N}) where N = (Int.(i_face), Int.(i_face) .+ _dir_step(i_face))
+_cells_next(i_face::Half{Int}) = _cells_next((i_face,))
+
+cells_next_to_inner_face(::CartesianMesh, i_face) = CellIndex.(_cells_next(i_face))
+function cells_next_to_inner_face(mesh::PeriodicCartesianMesh{N}, i_face::FaceIndex{N}) where N
+    if Half(1) in i_face
+        i_cell_1, i_cell_2 = _cells_next(i_face)
+        return (CellIndex(mod1.(i_cell_1, Tuple(mesh.nb_cells))),
+                CellIndex(mod1.(i_cell_2, Tuple(mesh.nb_cells))))
     else
-        (CartesianIndex(Int(i_face[1])), CartesianIndex(Int(i_face[1]) + 1))
-    end
-end
-function cells_next_to_inner_face(mesh::AbstractCartesianMesh{2}, i_face)
-    if mesh isa PeriodicCartesianMesh
-        if i_face[1] == Half(1)
-            return (CartesianIndex(mesh.nb_cells[1], Int(i_face[2])), CartesianIndex(1, Int(i_face[2])))
-        elseif i_face[2] == Half(1)
-            return (CartesianIndex(Int(i_face[1]), mesh.nb_cells[2]), CartesianIndex(Int(i_face[1]), 1))
-        end
-    end
-    if _direction(i_face) == 1
-        return (CartesianIndex(Int(i_face[1]), Int(i_face[2])), CartesianIndex(Int(i_face[1]), Int(i_face[2])) + CartesianIndex(1, 0))
-    elseif _direction(i_face) == 2
-        return (CartesianIndex(Int(i_face[1]), Int(i_face[2])), CartesianIndex(Int(i_face[1]), Int(i_face[2])) + CartesianIndex(0, 1))
-    else
-        error()
+        return CellIndex.(_cells_next(i_face))
     end
 end
 
-cell_next_to_boundary_face(mesh::CartesianMesh{1}, i_face) = i_face == (Half(1),) ? CartesianIndex(1) : CartesianIndex(mesh.nb_cells[1])
+cell_next_to_boundary_face(mesh::CartesianMesh{1}, i_face) = i_face == (Half(1),) ? CellIndex(1) : CellIndex(mesh.nb_cells[1])
 
 function cell_next_to_boundary_face(mesh::CartesianMesh{2}, i_face)
     if i_face[1] == Half(1)  # left boundary
-        return CartesianIndex(Int(i_face[1]) + 1, Int(i_face[2]))
+        return CellIndex(Int(i_face[1]) + 1, Int(i_face[2]))
     elseif i_face[2] == Half(1)  # bottom boundary
-        return CartesianIndex(Int(i_face[1]), Int(i_face[2]) + 1)
+        return CellIndex(Int(i_face[1]), Int(i_face[2]) + 1)
     elseif _direction(i_face) == 1  # right boundary
-        return CartesianIndex(Int(i_face[1]), Int(i_face[2]))
+        return CellIndex(Int(i_face[1]), Int(i_face[2]))
     elseif _direction(i_face) == 2  # top boundary
-        return CartesianIndex(Int(i_face[1]), Int(i_face[2]))
+        return CellIndex(Int(i_face[1]), Int(i_face[2]))
     else
         error()
     end
 end
 
+# GEOMETRY
 cell_center(mesh::AbstractCartesianMesh{1}, i_cell) = (i_cell[1] - 0.5) * dx(mesh)[1]
 cell_center(mesh::AbstractCartesianMesh{N}, i_cell) where N = (SVector{N}(Tuple(i_cell)...) .- 0.5) .* dx(mesh)
 face_center(mesh::AbstractCartesianMesh{1}, i_face) = (i_face[1] - 0.5) * dx(mesh)[1]
@@ -141,30 +146,31 @@ cell_volume(mesh::AbstractCartesianMesh, i_cell) = prod(dx(mesh))
 
 
 face_area(mesh::AbstractCartesianMesh{1, T}, i_face) where T = one(T)
-function face_area(mesh::AbstractCartesianMesh{2, T}, i_face) where T
-    if _direction(i_face) == 1
-        dx(mesh)[2]
-    else
-        dx(mesh)[1]
+face_area(mesh::AbstractCartesianMesh{2}, i_face) = _direction(i_face) == 1 ? dx(mesh)[2] : dx(mesh)[1]
+function face_area(mesh::AbstractCartesianMesh{3}, i_face) 
+    Δx, Δy, Δz = dx(mesh)
+    if _direction(i_face) == 1; return Δy*Δz
+    elseif _direction(i_face) == 2; return Δx*Δz
+    elseif _direction(i_face) == 3; return Δx*Δy
     end
 end
 
 normal_vector(mesh::CartesianMesh{1, T}, i_face) where T = i_face == (Half(1),) ? -one(T) : one(T)
 normal_vector(mesh::PeriodicCartesianMesh{1, T}, i_face) where T = one(T)
-function normal_vector(mesh::AbstractCartesianMesh{2, T}, i_face) where T
-    if mesh isa CartesianMesh
-        if i_face[1] == Half(1)  # Left boundary
-            return SVector(-oneunit(T), zero(T))./oneunit(T)
-        elseif i_face[2] == Half(1)  # Bottom boundary
-            return SVector(zero(T), -oneunit(T))./oneunit(T)
-        end
-    end
-    if _direction(i_face) == 1
-        return SVector(oneunit(T), zero(T))./oneunit(T)
-    elseif _direction(i_face) == 2
-        return SVector(zero(T), oneunit(T))./oneunit(T)
+
+
+_normal(T, i_face) = map(x -> x == 1 ? one(T) : zero(T)/oneunit(T), _dir_step(i_face))
+# Division by oneunit is required for compatibility with Unitful
+#
+function normal_vector(::PeriodicCartesianMesh{N, T}, i_face) where {N, T}
+    SVector(_normal(T, i_face)...)
+end
+function normal_vector(mesh::AbstractCartesianMesh{N, T}, i_face) where {N, T}
+    n = SVector(_normal(T, i_face)...)
+    if Half(1) in i_face
+        return -n
     else
-        error()
+        return n
     end
 end
 

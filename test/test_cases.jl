@@ -170,6 +170,21 @@ riemann_problem(mesh, w₁, w₂, step_position=0.5) = [x[1] < step_position ? w
         t, w = FiniteVolumes.run(flux, mesh, w₀, time_step=FixedCourant(0.2), nb_time_steps=10, verbose=false)
         @test maximum_principle(w, w₀)
     end
+
+    @testset "Splitted 3D linear advection" begin
+        mesh = PeriodicCartesianMesh(20, 20, 20)
+        splitted_advection(u₀) = FiniteVolumes.directional_splitting(LinearAdvectionFlux(u₀))
+
+        @test splitted_advection([1.0, 1.0, 1.0]) == (LinearAdvectionFlux([1.0, 0.0, 0.0]), LinearAdvectionFlux([0.0, 1.0, 0.0]), LinearAdvectionFlux([0.0, 0.0, 1.0]))
+
+        settings = (time_step=FixedCourant(0.1), nb_time_steps=5, numerical_flux=Upwind(), verbose=false)
+
+        # Scalar
+        cube(x, side=0.5) = all(0.5-side/2 .<= x .<= 0.5+side/2) ? 1.0 : 0.0
+        w₀ = map(cube, cell_centers(mesh))
+        t, w = FiniteVolumes.run(splitted_advection([1.0, 1.0, 1.0]), mesh, w₀; settings...)
+        @test maximum_principle(w, w₀)
+    end
 end
 
 @testset "Shallow water" begin
@@ -227,10 +242,10 @@ end
 
 end
 
-total_mass(mesh, w) = sum(w[i][:ρ] * FiniteVolumes.cell_volume(mesh, i) for i in nb_cells(mesh))
-total_gas_mass(mesh, w) = sum(w[i][:ρ] * w[i][:ξ] * FiniteVolumes.cell_volume(mesh, i) for i in nb_cells(mesh))
-mass_conservation(mesh, w, w₀) = (total_mass(mesh, w) == total_mass(mesh, w₀) && 
-                                  total_gas_mass(mesh, w) == total_gas_mass(mesh, w₀))
+# total_mass(mesh, w) = sum(w[i][:ρ] * FiniteVolumes.cell_volume(mesh, i) for i in nb_cells(mesh))
+# total_gas_mass(mesh, w) = sum(w[i][:ρ] * w[i][:ξ] * FiniteVolumes.cell_volume(mesh, i) for i in nb_cells(mesh))
+# mass_conservation(mesh, w, w₀) = (total_mass(mesh, w) == total_mass(mesh, w₀) && 
+#                                   total_gas_mass(mesh, w) == total_gas_mass(mesh, w₀))
 
 # @testset "Isothermal Euler problems" begin
     # @testset "One-fluid shock tubes" begin
