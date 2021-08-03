@@ -6,6 +6,7 @@ using FiniteVolumes
 using ForwardDiff
 import LinearAlgebra
 import FiniteVolumes.courant
+using FiniteVolumes.CartesianMeshes: Half
 
 # TOOLS
 getfield(w, var) = [wi[var] for wi in w]
@@ -194,8 +195,8 @@ end
 
     @testset "1D" begin
         flux = ShallowWater(9.8)
-        @test Upwind()(flux, CartesianMesh(2), [SVector(1.0, 0.0), SVector(1.0, 0.0)], (FiniteVolumes.Half(3,))) == SVector(0.0, 9.8/2)
-        @test Upwind()(flux, CartesianMesh(2), [SVector(2.0, 0.0), SVector(1.0, 0.0)], (FiniteVolumes.Half(3,))) ≈ SVector(1.9170289512680811, 12.25)
+        @test Upwind()(flux, CartesianMesh(2), [SVector(1.0, 0.0), SVector(1.0, 0.0)], (Half(3,))) == SVector(0.0, 9.8/2)
+        @test Upwind()(flux, CartesianMesh(2), [SVector(2.0, 0.0), SVector(1.0, 0.0)], (Half(3,))) ≈ SVector(1.9170289512680811, 12.25)
 
         mesh = CartesianMesh(100)
         w₀ = riemann_problem(mesh, SVector(2.0, 0.0), SVector(1.0, 0.0))

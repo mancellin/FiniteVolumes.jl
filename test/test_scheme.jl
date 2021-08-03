@@ -3,7 +3,7 @@
 using Test
 using StaticArrays
 using FiniteVolumes
-using FiniteVolumes: Half
+using FiniteVolumes.CartesianMeshes: Half, dx
 
 @testset "Schemes" begin
 
@@ -70,7 +70,7 @@ end
     # 1D
     flux = LinearAdvectionFlux(2.0)
     mesh = PeriodicCartesianMesh(45)
-    dt = 0.4*FiniteVolumes.dx(mesh)[1]
+    dt = 0.4*dx(mesh)[1]
     w0 = rand(FiniteVolumes.nb_cells(mesh))
     D = FiniteVolumes.inner_faces_to_cells_matrix(mesh)
     Δw1 = D * FiniteVolumes.numerical_fluxes(flux, mesh, w0, Upwind(), dt)
@@ -80,7 +80,7 @@ end
     # 2D
     flux = LinearAdvectionFlux([9.0, 4.0])
     mesh = PeriodicCartesianMesh(5, 8)
-    dt = 0.4*FiniteVolumes.dx(mesh)[1]
+    dt = 0.4*dx(mesh)[1]
     w0 = rand(size(FiniteVolumes.cell_centers(mesh))...)
     D = FiniteVolumes.inner_faces_to_cells_matrix(mesh)
     Δw1 = D * FiniteVolumes.numerical_fluxes(flux, mesh, w0, Upwind(), dt)

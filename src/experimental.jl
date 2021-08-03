@@ -1,3 +1,5 @@
+using SparseArrays
+
 function numerical_fluxes!(Φ, flux, mesh, w, numerical_flux::NumericalFlux, dt=0.0)
     map!(i_face -> numerical_flux(flux, mesh, w, i_face, dt), Φ, collect(inner_faces(mesh)))
 end

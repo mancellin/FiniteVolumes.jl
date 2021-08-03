@@ -1,3 +1,15 @@
+module CartesianMeshes
+
+using StaticArrays
+
+export AbstractCartesianMesh, CartesianMesh, PeriodicCartesianMesh
+export nb_dims, nb_cells, all_cells
+export nb_inner_faces, inner_faces
+export nb_boundary_faces, boundary_faces
+export cell_centers, cells_centers, cell_center, face_center
+export cells_next_to_inner_face, cell_next_to_boundary_face
+export cell_volume, face_area, normal_vector
+
 # Tools
 struct Half{N} <: Real
     n::N
@@ -15,9 +27,6 @@ is_int(h::Half{Int}) = mod(h.n, 2) == 0
 Base.print(io::IO, h::Half) = print(io, "$(h.n)/2")
 
 
-##################################
-abstract type FiniteVolumeMesh end
-##################################
 
 cell_centers(mesh) = map(i -> cell_center(mesh, i), all_cells(mesh))
 cells_centers(mesh) = cell_centers(mesh)
@@ -26,7 +35,7 @@ const FaceIndex{N} = NTuple{N, Half{Int}}
 const CellIndex{N} = CartesianIndex{N}
 
 #################################################################
-abstract type AbstractCartesianMesh{D, L} <: FiniteVolumeMesh end
+abstract type AbstractCartesianMesh{D, L} end
 #################################################################
 
 #########################################################
@@ -174,3 +183,4 @@ function normal_vector(mesh::AbstractCartesianMesh{N, T}, i_face) where {N, T}
     end
 end
 
+end # module

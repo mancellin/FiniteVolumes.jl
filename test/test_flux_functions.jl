@@ -3,6 +3,7 @@
 using Test
 using StaticArrays
 using FiniteVolumes
+using FiniteVolumes.CartesianMeshes: Half
 
 @testset "Fluxes" begin
 
@@ -64,7 +65,7 @@ end
         f2 = FluxFunction{SVector{2}, 1}(v -> SVector(v[2], v[2]^2/v[1] + v[1]^2*9.81/2))
         mesh = CartesianMesh(2)
         w = [SVector(1.0, 0.0), SVector(2.0, 0.0)]
-        i_face = (FiniteVolumes.Half(3),)
+        i_face = (Half(3),)
         @test (Upwind())(f, mesh, w, i_face) ≈ (Upwind())(f2, mesh, w, i_face)
     end
 

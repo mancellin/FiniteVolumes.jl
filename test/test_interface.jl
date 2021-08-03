@@ -7,7 +7,7 @@ using FiniteVolumes
         using Measurements
         mesh = CartesianMesh(10)
         w0 = map(x -> sin(2π*x), cell_centers(mesh))
-        i_face = (FiniteVolumes.Half(11),)
+        i_face = (FiniteVolumes.CartesianMeshes.Half(11),)
 
         flux = LinearAdvectionFlux(1.0 ± 1.0)
         @test (Upwind())(flux, mesh, w0, i_face) |> Measurements.value == w0[5]
@@ -19,7 +19,7 @@ using FiniteVolumes
     @testset "Unitful" begin
         using Unitful: kg, m, s
         mesh = CartesianMesh(0.0m, 1.0m, 10)
-        i_face = (FiniteVolumes.Half(11),)
+        i_face = (FiniteVolumes.CartesianMeshes.Half(11),)
         dt = 0.01s
 
         flux = LinearAdvectionFlux(1m/s)

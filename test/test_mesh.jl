@@ -1,12 +1,12 @@
 using Test
 using StaticArrays
 using FiniteVolumes
-using FiniteVolumes: Half
+using FiniteVolumes.CartesianMeshes: Half, dx, _direction
 
 @testset "Mesh" begin
-    @test FiniteVolumes.dx(CartesianMesh(10)) == SVector(0.1)
-    @test FiniteVolumes.dx(CartesianMesh(10, 10)) == SVector(0.1, 0.1)
-    @test FiniteVolumes.dx(CartesianMesh(SVector(1.0, 0.0), SVector(2.0, 2.0), SVector(10, 20))) == SVector(0.1, 0.1)
+    @test dx(CartesianMesh(10)) == SVector(0.1)
+    @test dx(CartesianMesh(10, 10)) == SVector(0.1, 0.1)
+    @test dx(CartesianMesh(SVector(1.0, 0.0), SVector(2.0, 2.0), SVector(10, 20))) == SVector(0.1, 0.1)
 
     @test FiniteVolumes.nb_cells(CartesianMesh(10)) == 10
     @test FiniteVolumes.nb_cells(CartesianMesh(5, 5)) == 25
@@ -27,8 +27,8 @@ using FiniteVolumes: Half
     @test FiniteVolumes.boundary_faces(CartesianMesh(2)) |> collect |> length == 2
     # @test FiniteVolumes.boundary_faces(CartesianMesh(5, 5)) |> collect |> length == 20
 
-    @test FiniteVolumes._direction((Half(3), Half(2))) == 1
-    @test FiniteVolumes._direction((Half(2), Half(3))) == 2
+    @test _direction((Half(3), Half(2))) == 1
+    @test _direction((Half(2), Half(3))) == 2
 
     @test FiniteVolumes.cells_next_to_inner_face(PeriodicCartesianMesh(10), (Half(19),)) == (CartesianIndex(9), CartesianIndex(10))
     @test FiniteVolumes.cells_next_to_inner_face(PeriodicCartesianMesh(10), (Half(19),)) == (CartesianIndex(9), CartesianIndex(10))
