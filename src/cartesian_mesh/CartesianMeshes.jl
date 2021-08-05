@@ -168,10 +168,9 @@ normal_vector(mesh::CartesianMesh{1, T}, i_face) where T = i_face == (Half(1),) 
 normal_vector(mesh::PeriodicCartesianMesh{1, T}, i_face) where T = one(T)
 
 
-_normal(T, i_face) = map(x -> x == 1 ? one(T) : zero(T)/oneunit(T), _dir_step(i_face))
+_normal(::Type{T}, i_face) where T = map(x -> x == 1 ? one(T) : zero(T)/oneunit(T), _dir_step(i_face))
 # Division by oneunit is required for compatibility with Unitful
-#
-function normal_vector(::PeriodicCartesianMesh{N, T}, i_face) where {N, T}
+function normal_vector(mesh::PeriodicCartesianMesh{N, T}, i_face) where {N, T}
     SVector(_normal(T, i_face)...)
 end
 function normal_vector(mesh::AbstractCartesianMesh{N, T}, i_face) where {N, T}
