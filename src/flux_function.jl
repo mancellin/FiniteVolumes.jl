@@ -20,18 +20,6 @@ LinearAdvectionFlux(v::AbstractArray) = LinearAdvectionFlux{SVector{length(v), e
 jacobian(f::LinearAdvectionFlux, w, n) = f.velocity' * n
 LinearAlgebra.eigvals(f::LinearAdvectionFlux, w, n) = f.velocity' * n
 
-function directional_splitting(f::LinearAdvectionFlux{T}) where T<:SVector{2}
-    (LinearAdvectionFlux(SVector(f.velocity[1], zero(eltype(f.velocity)))),
-     LinearAdvectionFlux(SVector(zero(eltype(f.velocity)), f.velocity[2])))
-end
-
-function directional_splitting(f::LinearAdvectionFlux{T}) where T<:SVector{3}
-    z = zero(eltype(f.velocity))
-    (LinearAdvectionFlux(SVector(f.velocity[1], z, z)),
-     LinearAdvectionFlux(SVector(z, f.velocity[2], z)),
-     LinearAdvectionFlux(SVector(z, z, f.velocity[3])))
-end
-
 ##############################
 
 # ! SCALAR FLUX FUNCTION ONLY

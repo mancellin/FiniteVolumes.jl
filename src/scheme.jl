@@ -76,27 +76,28 @@ end
 ################################################################################
 #                                     Div                                      #
 ################################################################################
+numerical_flux(flux, mesh, w, scheme, i_face, dt) = scheme(flux, mesh, w, i_face, dt)
 
 div!(Δw, flux, mesh, w, args...) = div!(Δw, FluxFunction{eltype(w), nb_dims(mesh), typeof(flux)}(flux), mesh, w, args...)
 
-function div!(Δw, flux::AbstractFlux, mesh, w, numerical_flux::NumericalFlux, dt=0.0)
+function div!(Δw, flux::AbstractFlux, mesh, w, scheme::NumericalFlux, dt=0.0)
     @inbounds for i_face in inner_faces(mesh)
-        ϕ = numerical_flux(flux, mesh, w, i_face, dt)
+        ϕ = numerical_flux(flux, mesh, w, scheme, i_face, dt)
         i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
         Δw[i_cell_1] += ϕ * face_area(mesh, i_face) / cell_volume(mesh, i_cell_1)
         Δw[i_cell_2] -= ϕ * face_area(mesh, i_face) / cell_volume(mesh, i_cell_2)
     end
 end
 
-function div!(Δw, flux::AbstractFlux, mesh, w, boundary_flux::BoundaryCondition, dt=0.0)
+function div!(Δw, flux::AbstractFlux, mesh, w, boundary_scheme::BoundaryCondition, dt=0.0)
     @inbounds for i_face in boundary_faces(mesh)
-        ϕ = boundary_flux(flux, mesh, w, i_face, dt)
+        ϕ = numerical_flux(flux, mesh, w, boundary_scheme, i_face, dt)
         i_cell = cell_next_to_boundary_face(mesh, i_face)
         Δw[i_cell] += ϕ * face_area(mesh, i_face) / cell_volume(mesh, i_cell)
     end
 end
 
-flux_in_cell(flux, mesh, w, scheme, dt, i_face, i_cell) = scheme(flux, mesh, w, i_face, dt) * face_area(mesh, i_face) / cell_volume(mesh, i_cell)
+flux_in_cell(flux, mesh, w, scheme, dt, i_face, i_cell) = numerical_flux(flux, mesh, w, scheme, i_face, dt) * face_area(mesh, i_face) / cell_volume(mesh, i_cell)
 function Δw_type(flux, mesh, w, scheme, dt)
     T = Base.return_types(flux_in_cell, typeof.((flux, mesh, w, scheme, dt, first(inner_faces(mesh)), first(all_cells(mesh)))))[1]
     if T in (Union{}, Any)
@@ -106,9 +107,9 @@ function Δw_type(flux, mesh, w, scheme, dt)
     end
 end
 
-function div(flux, mesh, w, numerical_flux::Union{NumericalFlux, BoundaryCondition}, dt=0.0)
-    Δw = zeros(Δw_type(flux, mesh, w, numerical_flux, dt), size(w))
-    div!(Δw, flux, mesh, w, numerical_flux, dt)
+function div(flux, mesh, w, scheme::Union{NumericalFlux, BoundaryCondition}, dt=0.0)
+    Δw = zeros(Δw_type(flux, mesh, w, scheme, dt), size(w))
+    div!(Δw, flux, mesh, w, scheme, dt)
     return Δw
 end
 

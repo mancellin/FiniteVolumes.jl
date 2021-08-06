@@ -6,6 +6,7 @@ using FiniteVolumes
 using ForwardDiff
 import LinearAlgebra
 import FiniteVolumes.courant
+using FiniteVolumes: UnidirectionalFlux
 using FiniteVolumes.CartesianMeshes: Half
 
 # TOOLS
@@ -102,7 +103,7 @@ riemann_problem(mesh, w₁, w₂, step_position=0.5) = [x[1] < step_position ? w
         mesh = PeriodicCartesianMesh(20, 20)
         splitted_advection(u₀) = FiniteVolumes.directional_splitting(LinearAdvectionFlux(u₀))
 
-        @test splitted_advection(SVector(1.0, 1.0)) == (LinearAdvectionFlux(SVector(1.0, 0.0)), LinearAdvectionFlux(SVector(0.0, 1.0)))
+        @test splitted_advection(SVector(1.0, 1.0)) == (UnidirectionalFlux{1}(LinearAdvectionFlux(SVector(1.0, 0.0))), UnidirectionalFlux{2}(LinearAdvectionFlux(SVector(0.0, 1.0))))
 
         settings = (time_step=FixedCourant(0.1), nb_time_steps=5, numerical_flux=Upwind(), verbose=false)
 
@@ -175,8 +176,6 @@ riemann_problem(mesh, w₁, w₂, step_position=0.5) = [x[1] < step_position ? w
     @testset "Splitted 3D linear advection" begin
         mesh = PeriodicCartesianMesh(20, 20, 20)
         splitted_advection(u₀) = FiniteVolumes.directional_splitting(LinearAdvectionFlux(u₀))
-
-        @test splitted_advection([1.0, 1.0, 1.0]) == (LinearAdvectionFlux([1.0, 0.0, 0.0]), LinearAdvectionFlux([0.0, 1.0, 0.0]), LinearAdvectionFlux([0.0, 0.0, 1.0]))
 
         settings = (time_step=FixedCourant(0.1), nb_time_steps=5, numerical_flux=Upwind(), verbose=false)
 
