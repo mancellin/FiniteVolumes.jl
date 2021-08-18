@@ -99,6 +99,15 @@ riemann_problem(mesh, w₁, w₂, step_position=0.5) = [x[1] < step_position ? w
         @test maximum_principle(w, w₀)
     end
 
+    @testset "Time dependant advection" begin
+        mesh = CartesianMesh(100)
+        flux = FiniteVolumes.TimeDependantFlux(t -> LinearAdvectionFlux(sin(t)))
+        step(x) = 0.33 < x[1] < 0.66 ? 1.0 : 0.0
+        w₀ = map(step, cell_centers(mesh))
+        t, w = FiniteVolumes.run(flux, mesh, w₀, time_step=0.005, nb_time_steps=10, verbose=false)
+        @test maximum_principle(w, w₀)
+    end
+
     @testset "Splitted 2D linear advection" begin
         mesh = PeriodicCartesianMesh(20, 20)
         splitted_advection(u₀) = FiniteVolumes.directional_splitting(LinearAdvectionFlux(u₀))
