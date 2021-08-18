@@ -136,9 +136,9 @@ riemann_problem(mesh, w₁, w₂, step_position=0.5) = [x[1] < step_position ? w
             velocity::V
         end
 
-        function (scheme::FiniteVolumes.NumericalFlux)(flux::AdvectionFlux, mesh, w, i_face, dt)
+        function FiniteVolumes.numerical_flux(flux::AdvectionFlux, mesh, w, scheme, i_face, dt)
             v = LinearAdvectionFlux(flux.velocity(FiniteVolumes.face_center(mesh, i_face)))
-            return scheme(v, mesh, w, i_face, dt)
+            return FiniteVolumes.numerical_flux(v, mesh, w, scheme, i_face, dt)
         end
 
         function FiniteVolumes.courant(Δt, flux::AdvectionFlux, mesh, w, i_face)
@@ -231,7 +231,7 @@ end
         end
 
         v₀ = map(x -> SVector(1.0 + exp(-500*((x[1]-0.5)^2 + (x[2]-0.5)^2)), 0.0, 0.0), cell_centers(mesh))
-        FiniteVolumes.div(flux, mesh, v₀)
+        FiniteVolumes.div(flux, mesh, v₀, Upwind())
         t, v = FiniteVolumes.run(flux, mesh, v₀, time_step=FixedCourant(0.3),
                                  nb_time_steps=40, verbose=false)
 

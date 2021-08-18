@@ -9,7 +9,7 @@ using FiniteVolumes.CartesianMeshes: Half, dx
 
 @testset "Upwind linear advection" begin
     scheme = Upwind()
-    @test scheme isa FiniteVolumes.NumericalFlux
+    @test scheme isa FiniteVolumes.Scheme
 
     # 1D
     mesh = CartesianMesh(0.0, 1.0, 2)
