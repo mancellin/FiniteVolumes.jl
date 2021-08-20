@@ -107,7 +107,7 @@ boundary_faces(mesh::PeriodicCartesianMesh) = Tuple([])
 
 # CELLS NEXT TO FACE
 _direction(i_face::FaceIndex{1}) = 1
-_direction(i_face::FaceIndex{2}) = !is_int(i_face[1]) ? 1 : 2  # 1 = horizontal, 2 = vertical
+_direction(i_face::FaceIndex{2}) = !is_int(i_face[1]) ? 1 : 2  # 1 = normale horizontale, 2 = normale verticale
 _direction(i_face::FaceIndex{3}) = !is_int(i_face[1]) ? 1 : !is_int(i_face[2]) ? 2 : 3
 
 _dir_step(i_face::FaceIndex{1}) = (1,)

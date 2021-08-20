@@ -3,7 +3,7 @@ abstract type Scheme end
 
 numerical_flux(flux, mesh, w, scheme, i_face, dt) = scheme(flux, mesh, w, i_face, dt)
 
-# By default, can ignore time step
+# By default, scheme definition can ignore time step
 (scheme::Scheme)(flux, mesh, w, i_face, dt) = scheme(flux, mesh, w, i_face)
 
 ####################################
