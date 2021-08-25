@@ -112,6 +112,7 @@ function Δw_type(flux, mesh, w, schemes::NTuple{N, Union{Scheme, BoundaryCondit
         return T
     end
 end
+Δw_type(f, m, w, s::Union{Scheme, BoundaryCondition}, dt) = Δw_type(f, m, w, (s,), dt)
 
 function div(flux, mesh, w, schemes::NTuple{N, Union{Scheme, BoundaryCondition}}, dt=0.0) where N
     Δw = zeros(Δw_type(flux, mesh, w, schemes, dt), size(w))
