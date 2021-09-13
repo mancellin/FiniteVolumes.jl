@@ -11,6 +11,13 @@ struct TimeDependantFlux{F} <: AbstractFlux
     flux_at::F
 end
 
+function directional_splitting(f::TimeDependantFlux)
+    (
+    TimeDependantFlux(t -> directional_splitting(f.flux_at(t))[1]),
+    TimeDependantFlux(t -> directional_splitting(f.flux_at(t))[2]),
+    )
+end
+
 
 function run!(fluxes::Tuple, mesh, w, scheme, t; nb_time_steps, time_step, verbose=true, callback=nothing, kwargs...)
 
