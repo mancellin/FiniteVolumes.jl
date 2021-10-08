@@ -95,7 +95,7 @@ function (f::EulerFlux)(v, n::Number)
     u = v[2]/v[1] * n
     ξ = v[3]/v[1]
     p = invert_p(f.eos, ρ, ξ)
-    return SVector(ρ*u, ρ*u^2 + p, ρ*ξ*u)
+    return SVector(ρ*u, (ρ*u^2 + p)*n, ρ*ξ*u)
 end
 
 function LinearAlgebra.eigvals(f::EulerFlux, v, n::Number)
@@ -204,9 +204,9 @@ end
     #           dρdξ*ξ/ρ-ux/c+1.0   1.0/c  0.0  -dρdξ/ρ]
 
 
-###################################
-struct LUpwind <: FiniteVolumes.NumericalFlux end
-###################################
+##########################################
+struct LUpwind <: FiniteVolumes.Scheme end
+##########################################
 
 function two_point_l_upwind(flux, v₁, v₂, n)  # l-upwind FVCF
     v_mean = (v₁ + v₂)/2
