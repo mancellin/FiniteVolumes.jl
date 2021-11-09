@@ -26,19 +26,23 @@ end
     x, y, field
 end
 
+function get_base_colors(N)
+    if N == 3
+        return (RGB(0.643, 0.216, 0.255), RGB(0.666, 0.655, 0.224), RGB(0.176, 0.275, 0.443))
+    elseif N == 4
+        return (RGB(0.812, 0.408, 0.435), RGB(0.392, 0.69, 0.345), RGB(0.831, 0.757, 0.416), RGB(0.373, 0.322, 0.576))
+    elseif N == 5
+        return (RGB(0.812, 0.408, 0.435), RGB(0.392, 0.69, 0.345), RGB(0.831, 0.757, 0.416), RGB(0.373, 0.322, 0.576), RGB(0.2, 0.2, 0.2))
+    end
+end
+
 @recipe function plot(grid::AbstractCartesianMesh{2}, w, vars::NTuple{N, Int};
                       base_colors=nothing) where N
     seriestype := :image
     yflip --> false
 
-    if base_colors == nothing
-        if N == 3
-            base_colors = (RGB(0.643, 0.216, 0.255), RGB(0.666, 0.655, 0.224), RGB(0.176, 0.275, 0.443))
-        elseif N == 4
-            base_colors = (RGB(0.812, 0.408, 0.435), RGB(0.392, 0.69, 0.345), RGB(0.831, 0.757, 0.416), RGB(0.373, 0.322, 0.576))
-        elseif N == 5
-            base_colors = (RGB(0.812, 0.408, 0.435), RGB(0.392, 0.69, 0.345), RGB(0.831, 0.757, 0.416), RGB(0.373, 0.322, 0.576), RGB(0.2, 0.2, 0.2))
-        end
+    if isnothing(base_colors)
+        base_colors = get_base_colors(N)
     end
     base_colors = XYZ.(base_colors)
 
