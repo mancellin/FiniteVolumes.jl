@@ -16,7 +16,7 @@ mesh = CartesianMesh(10, 10)  # A 2D mesh of 10 cells × 10 cells
 F(u) = u * [1.0, 0.5]  # Flux function of the linear advection flux in direction (1.0, 0.5)
 dudt(U) = -FiniteVolumes.div(F, mesh, U, (Upwind(), NeumannBC()))
 
-U = [sin(2π*i/10*j/10) for i in 1:10, j in 1:10]  # A scalar field
+U = [sin(2π*x*y) for (x, y) in cell_centers(mesh)]  # A scalar field
 # A basic explicit Euler time step to solve the advection PDE ∂_t u + div (c u) = 0
 Δt = 0.01
 U += Δt * dudt(U)
