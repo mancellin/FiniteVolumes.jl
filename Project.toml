@@ -1,7 +1,7 @@
 name = "FiniteVolumes"
 uuid = "1ee31f8c-159e-4600-8f10-217557b81b0c"
 authors = ["Matthieu Ancellin <matthieu.ancellin@ens-paris-saclay.fr>"]
-version = "0.3.0"
+version = "0.4.0-dev"
 
 [deps]
 ColorTypes = "3da002f7-5984-5a60-b8a6-cbb66c0b333f"
