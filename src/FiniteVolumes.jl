@@ -7,10 +7,10 @@ using StaticArrays
 # CORE
 
 include("./flux_function.jl")
-export LinearAdvectionFlux, ShallowWater
+export LinearAdvectionFlux, AdvectionFlux, RotationFlux, ShallowWater
 
 include("./scheme.jl")
-export Upwind, NeumannBC
+export Upwind, Centered, NeumannBC
 
 include("./courant.jl")
 

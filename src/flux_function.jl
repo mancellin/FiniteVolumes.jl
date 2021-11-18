@@ -22,6 +22,24 @@ eigvals(f::LinearAdvectionFlux, w, n) = f.velocity' * n
 
 ##############################
 
+struct AdvectionFlux{D, VF}
+    velocity_at_face::VF
+end
+
+function numerical_flux(flux::AdvectionFlux, mesh, w, scheme, i_face, dt)
+    numerical_flux(LinearAdvectionFlux(flux.velocity_at_face(mesh, i_face)), mesh, w, scheme, i_face, dt)
+end
+
+function RotationFlux(center)
+    function rotation_velocity(mesh, i_face)
+        x = face_center(mesh, i_face) .- center
+        return SVector{2, Float64}(-x[2], x[1])
+    end
+    return AdvectionFlux{2}(rotation_velocity)
+end
+
+##############################
+
 struct ShallowWater{T}
     g::T
 end

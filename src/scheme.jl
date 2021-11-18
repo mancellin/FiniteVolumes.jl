@@ -1,8 +1,6 @@
 # SCHEME
 abstract type Scheme end
 
-numerical_flux(flux, mesh, w, scheme, i_face, dt) = scheme(flux, mesh, w, i_face, dt)
-
 # By default, scheme definition can ignore time step
 (scheme::Scheme)(flux, mesh, w, i_face, dt) = scheme(flux, mesh, w, i_face)
 
@@ -78,6 +76,8 @@ end
 ################################################################################
 #                                     Div                                      #
 ################################################################################
+
+numerical_flux(flux, mesh, w, Φ, i_face, dt) = Φ(flux, mesh, w, i_face, dt)
 
 function div!(Δw, flux, mesh, w, scheme::Scheme, dt=0.0)
     @inbounds for i_face in inner_faces(mesh)
