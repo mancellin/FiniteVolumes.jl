@@ -19,8 +19,8 @@ end
 
 function directional_splitting(f::AdvectionFlux{2})
     (
-    UnidirectionalFlux{1}(AdvectionFlux((m, i_face) -> SVector(flux.velocity(m, i_face)[1], 0.0))),
-    UnidirectionalFlux{2}(AdvectionFlux((m, i_face) -> SVector(0.0, flux.velocity(m, i_face)[2])))
+    UnidirectionalFlux{1}(AdvectionFlux{2}((m, i_face) -> SVector(f.velocity_at_face(m, i_face)[1], 0.0))),
+    UnidirectionalFlux{2}(AdvectionFlux{2}((m, i_face) -> SVector(0.0, f.velocity_at_face(m, i_face)[2])))
     )
 end
 

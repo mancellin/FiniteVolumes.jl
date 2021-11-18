@@ -3,6 +3,7 @@
 using Test
 using StaticArrays
 using FiniteVolumes
+using ForwardDiff, LinearAlgebra
 
 @testset "Fluxes" begin
 
@@ -69,9 +70,20 @@ end
     end
 
     @testset "2D" begin
-        f = ShallowWater()
-        for h in [1.0, 2.0], ux in [-1.0, 0.0, 1.0], uy = [0.0, 1.0]
-            @test all(FiniteVolumes.eigvals(f, SVector(h, h*ux, h*uy), SVector(1.0, 0.0)) .≈ [ux-sqrt(h*f.g), ux, ux+sqrt(h*f.g)])
+        flux = ShallowWater(9.8)
+
+        for v in [SVector(1.0, 0.0, 0.0), SVector(1.0, 1.0, 1.0)], n in [SVector(1.0, 0.0), SVector(0.0, 1.0), sqrt(2)/2*SVector(1.0, 1.0)]
+            J1 = ForwardDiff.jacobian(v -> flux(v, n), v)
+            J2 = FiniteVolumes.jacobian(flux, v, n)
+            @test J1 == J2
+            λ1 = LinearAlgebra.eigvals(Array(J1))
+            λ2 = FiniteVolumes.eigvals(flux, v, n)
+            @test λ1 ≈ λ2
+            eg1 = LinearAlgebra.eigen(Array(J1)).vectors
+            eg2 = FiniteVolumes.eigen(flux, v, n)[2]
+            for (c1, c2) in zip(eachcol(eg1), eachcol(eg2))
+                @test maximum(abs.(c2)) .* abs.(c1) ≈ maximum(abs.(c1)) .* abs.(c2)
+            end
         end
     end
 end

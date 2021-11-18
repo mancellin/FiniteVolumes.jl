@@ -26,6 +26,8 @@ struct AdvectionFlux{D, VF}
     velocity_at_face::VF
 end
 
+AdvectionFlux{D}(vf) where D = AdvectionFlux{D, typeof(vf)}(vf)
+
 function numerical_flux(flux::AdvectionFlux, mesh, w, scheme, i_face, dt)
     numerical_flux(LinearAdvectionFlux(flux.velocity_at_face(mesh, i_face)), mesh, w, scheme, i_face, dt)
 end

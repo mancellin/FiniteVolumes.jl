@@ -1,11 +1,7 @@
 # Integration tests on some simple test cases.
 
 using Test
-using StaticArrays
-using FiniteVolumes
-using ForwardDiff
-import LinearAlgebra
-import FiniteVolumes.courant
+using StaticArrays, FiniteVolumes
 using FiniteVolumes: UnidirectionalFlux
 using FiniteVolumes.CartesianMeshes: Half
 
@@ -67,25 +63,23 @@ riemann_problem(mesh, w₁, w₂, step_position=0.5) = [x[1] < step_position ? w
         @test !maximum_principle(w_unstable, sine_w₀)
     end
 
-    @testset "Wave equation" begin
+    @testset "1D Wave equation" begin
         mesh = CartesianMesh(10)
-        w₀ = map(x -> SVector{2}(sin(2π*x), cos(2π*x)), cell_centers(mesh))
+        w₀ = [SVector{2}(sin(2π*x), cos(2π*x)) for x in cell_centers(mesh)]
 
+        # Anonymous model
         f(α, n) = n * SVector(α[2], α[1])
         t, w₁ = FiniteVolumes.run(f, mesh, w₀, time_step=FixedCourant(0.2), nb_time_steps=10, verbose=false)
 
+        # Fancy model
         struct Wave1DFlux{T}
             velocity::T
         end
-
-        (f::Wave1DFlux{T})(w, n) where T = f.velocity*SVector{2}(w[2], w[1])*n
-
+        (wf::Wave1DFlux)(w, n) = wf.velocity*SVector{2}(w[2], w[1])*n
         jacobian(f::Wave1DFlux, w, n) = f.velocity*SMatrix{2, 2}(0.0, 1.0, 1.0, 0.0)*n
-        LinearAlgebra.eigvals(f::Wave1DFlux, w, n) = SVector{2}(-1.0, 1.0)*n
-        LinearAlgebra.eigen(f::Wave1DFlux, w, n) = (SVector{2}(-1.0, 1.0)*n, SMatrix{2, 2}(-0.707107, 0.707107, 0.707107, 0.707107)*n)
-
-        f = Wave1DFlux(1.0)
-        t, w₂ = FiniteVolumes.run(f, mesh, w₀, time_step=FixedCourant(0.2), nb_time_steps=10, verbose=false)
+        FiniteVolumes.eigvals(f::Wave1DFlux, w, n) = SVector{2}(-1.0, 1.0)*n
+        FiniteVolumes.eigen(f::Wave1DFlux, w, n) = (SVector{2}(-1.0, 1.0)*n, SMatrix{2, 2}(-0.707107, 0.707107, 0.707107, 0.707107)*n)
+        t, w₂ = FiniteVolumes.run(Wave1DFlux(1.0), mesh, w₀, time_step=FixedCourant(0.2), nb_time_steps=10, verbose=false)
 
         @test all(isapprox.(w₁, w₂, atol=1e-6))
     end
@@ -141,23 +135,8 @@ riemann_problem(mesh, w₁, w₂, step_position=0.5) = [x[1] < step_position ? w
     end
 
     @testset "2D rotation" begin
-        struct AdvectionFlux{V}
-            velocity::V
-        end
-
-        function FiniteVolumes.numerical_flux(flux::AdvectionFlux, mesh, w, scheme, i_face, dt)
-            v = LinearAdvectionFlux(flux.velocity(FiniteVolumes.face_center(mesh, i_face)))
-            return FiniteVolumes.numerical_flux(v, mesh, w, scheme, i_face, dt)
-        end
-
-        function FiniteVolumes.courant(Δt, flux::AdvectionFlux, mesh, w, i_face)
-            v = LinearAdvectionFlux(flux.velocity(FiniteVolumes.face_center(mesh, i_face)))
-            return courant(Δt, v, mesh, w, i_face)
-        end
-
         mesh = PeriodicCartesianMesh(40, 40)
-        flux = AdvectionFlux(x -> SVector(-(x[2] - 0.5), x[1]-0.5))
-        splitted_flux = (AdvectionFlux(x -> SVector(-(x[2] - 0.5), 0.0)), AdvectionFlux(x -> SVector(0.0, x[1] - 0.5)))
+        flux = RotationFlux(SVector(0.5, 0.5))
 
         square(x, side=0.5) = all(0.5-side/2 .<= x .<= 0.5+side/2) ? 1.0 : 0.0
         w₀ = map(square, cell_centers(mesh))
@@ -166,7 +145,7 @@ riemann_problem(mesh, w₁, w₂, step_position=0.5) = [x[1] < step_position ? w
         t, w = FiniteVolumes.run(flux, mesh, w₀; settings...)
         @test maximum_principle(w, w₀)
 
-        t, w = FiniteVolumes.run(splitted_flux, mesh, w₀; settings...)
+        t, w = FiniteVolumes.run(directional_splitting(flux), mesh, w₀; settings...)
         @test maximum_principle(w, w₀)
     end
 
@@ -224,21 +203,6 @@ end
         mesh = PeriodicCartesianMesh(40, 40)
         flux = ShallowWater(9.8)
 
-        # Test jacobian structure
-        for v in [SVector(1.0, 0.0, 0.0), SVector(1.0, 1.0, 1.0)], n in [SVector(1.0, 0.0), SVector(0.0, 1.0), sqrt(2)/2*SVector(1.0, 1.0)]
-            J1 = ForwardDiff.jacobian(v -> flux(v, n), v)
-            J2 = FiniteVolumes.jacobian(flux, v, n)
-            @test J1 == J2
-            λ1 = LinearAlgebra.eigvals(Array(J1))
-            λ2 = FiniteVolumes.eigvals(flux, v, n)
-            @test λ1 ≈ λ2
-            eg1 = LinearAlgebra.eigen(Array(J1)).vectors
-            eg2 = FiniteVolumes.eigen(flux, v, n)[2]
-            for (c1, c2) in zip(eachcol(eg1), eachcol(eg2))
-                @test maximum(abs.(c2)) .* abs.(c1) ≈ maximum(abs.(c1)) .* abs.(c2)
-            end
-        end
-
         v₀ = map(x -> SVector(1.0 + exp(-500*((x[1]-0.5)^2 + (x[2]-0.5)^2)), 0.0, 0.0), cell_centers(mesh))
         FiniteVolumes.div(flux, mesh, v₀, Upwind())
         t, v = FiniteVolumes.run(flux, mesh, v₀, time_step=FixedCourant(0.3),
@@ -250,80 +214,5 @@ end
     end
 
 end
-
-# total_mass(mesh, w) = sum(w[i][:ρ] * FiniteVolumes.cell_volume(mesh, i) for i in nb_cells(mesh))
-# total_gas_mass(mesh, w) = sum(w[i][:ρ] * w[i][:ξ] * FiniteVolumes.cell_volume(mesh, i) for i in nb_cells(mesh))
-# mass_conservation(mesh, w, w₀) = (total_mass(mesh, w) == total_mass(mesh, w₀) && 
-#                                   total_gas_mass(mesh, w) == total_gas_mass(mesh, w₀))
-
-# @testset "Isothermal Euler problems" begin
-    # @testset "One-fluid shock tubes" begin
-    #     mesh = CartesianMesh(0.0, 1.0, 100)
-    #     flux = IsothermalTwoFluidEuler{nb_dims(mesh)}(1.0, 1.0, 5.0, 1000.0, 1.0)
-    #     w₀ = riemann_problem(mesh, full_state(flux, p=2.0, u=0.0, ξ=1.0), full_state(flux, p=1.0, u=0.0, ξ=1.0))
-    #     t, w = FiniteVolumes.run(flux, mesh, w₀, time_step=FixedCourant(0.8), nb_time_steps=20, verbose=false)
-    #     @test w[50][:p] ≈ 1.41  rtol=1e-2
-    #     @test w[50][:u] ≈ 0.347 rtol=1e-2
-    #     @test maximum_principle(w, w₀, :ξ)
-    #     @test boundedness(w, 0.0, 1.0, :α)
-
-    #     w₀ = riemann_problem(mesh, full_state(flux, p=2.0, u=0.0, ξ=0.0), full_state(flux, p=1.0, u=0.0, ξ=0.0))
-    #     t, w = FiniteVolumes.run(flux, mesh, w₀, time_step=FixedCourant(0.8), nb_time_steps=20, verbose=false)
-    #     @test w[50][:p] ≈ 1.5  rtol=1e-2
-    #     @test w[50][:u] ≈ 1e-4 rtol=1e-2
-    #     @test maximum_principle(w, w₀, :ξ)
-    #     @test boundedness(w, 0.0, 1.0, :α)
-    # end
-
-    # @testset "Two-fluid shock tubes" begin
-    #     mesh = CartesianMesh(0.0, 1.0, 100)
-    #     flux = IsothermalTwoFluidEuler{nb_dims(mesh)}(300.0, 1.0, 1500.0, 1000.0, 1e5)
-
-    #     left_state = full_state(flux, p=2e5, u=0.0, ξ=1.0)
-    #     right_state = full_state(flux, p=1e5, u=0.0, ξ=0.0)
-    #     w₀ = [i < nb_cells(mesh)/2 ? left_state : right_state for i in all_cells(mesh)]
-
-    #     t, w = FiniteVolumes.run(flux, mesh, w₀, time_step=FixedCourant(0.4), nb_time_steps=20, verbose=false)
-    #     @test maximum_principle(w, w₀, :ξ)
-    #     @test boundedness(w, 0.0, 1.0, :α)
-    # end
-
-    # @testset "Two-fluid 1D advection" begin
-    #     mesh = CartesianMesh(0.0, 1.0, 100)
-    #     flux = IsothermalTwoFluidEuler{nb_dims(mesh)}(300.0, 1.0, 1500.0, 1000.0, 1e5)
-
-    #     ξ₀(x) = 0.2 < x[1] < 0.5 ? 0.0 : 1.0
-
-    #     for u in [-1000.0, -10.0, 0.0, 10.0, 1000.0]
-    #         w₀ = [full_state(flux, p=1e5, u=u, ξ=ξ₀(x)) for x in cell_centers(mesh)]
-    #         t, w = FiniteVolumes.run(flux, mesh, w₀, time_step=FixedCourant(0.4), nb_time_steps=20, verbose=false)
-    #         @test maximum_principle(w, w₀, :ξ)
-    #         @test boundedness(w, 0.0, 1.0, :α)
-    #         @test mass_conservation(mesh, w, w₀)
-    #         @test w[50][:u] ≈ u  atol=1e-10
-    #         @test w[50][:p] ≈ 1e5
-    #     end
-    # end
-
-    # @testset "Two-fluid 2D advection" begin
-    #     mesh = PeriodicCartesianMesh(20, 20)
-    #     flux = IsothermalTwoFluidEuler{nb_dims(mesh)}(300.0, 1.0, 1500.0, 1000.0, 1e5)
-
-    #     is_in_disk(x) = norm([0.5, 0.5] - x) < 0.3
-    #     ξ₀(x) = is_in_disk(x) ? 0.0 : 1.0
-
-    #     for ux in [-10.0, 0.0, 10.0], uy in [-10.0, 0.0, 10.0]
-    #         w₀ = [full_state(flux, p=1e5, ux=ux, uy=uy, ξ=ξ₀(x)) for x in cell_centers(mesh)]
-    #         t, w = FiniteVolumes.run(flux, mesh, w₀, time_step=FixedCourant(0.3), nb_time_steps=20, verbose=false)
-    #         @test maximum_principle(w, w₀, :ξ)
-    #         @test boundedness(w, 0.0, 1.0, :α)
-    #         @test mass_conservation(mesh, w, w₀)
-    #         @test w[50][:ux] ≈ ux  atol=1e-10
-    #         @test w[50][:uy] ≈ uy  atol=1e-10
-    #         @test w[50][:p] ≈ 1e5
-    #     end
-    # end
-
-# end
 
 end

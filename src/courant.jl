@@ -16,7 +16,7 @@ function courant(Δt, flux, mesh, w, i_face)
 end
 
 function courant(Δt, flux::AdvectionFlux, mesh, w, i_face)
-    v = LinearAdvectionFlux(flux.velocity(mesh, i_face))
+    v = LinearAdvectionFlux(flux.velocity_at_face(mesh, i_face))
     return FiniteVolumes.courant(Δt, v, mesh, w, i_face)
 end
 
