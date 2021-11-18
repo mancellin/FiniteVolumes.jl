@@ -1,13 +1,13 @@
 module FiniteVolumes
 
+using ForwardDiff
 using LinearAlgebra
 using StaticArrays
 
 # CORE
 
 include("./flux_function.jl")
-export LinearAdvectionFlux, FluxFunction, ShallowWater
-export directional_splitting
+export LinearAdvectionFlux, ShallowWater
 
 include("./scheme.jl")
 export Upwind, NeumannBC
@@ -21,6 +21,7 @@ using FiniteVolumes.CartesianMeshes
 export CartesianMesh, PeriodicCartesianMesh, cell_centers
 
 include("./splitting.jl")
+export directional_splitting
 
 # Time solver
 include("./euler_explicit.jl")

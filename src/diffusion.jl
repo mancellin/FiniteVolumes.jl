@@ -1,6 +1,6 @@
 import FiniteVolumes.CartesianMeshes.AbstractCartesianMesh
 
-struct DiffusionFlux <: AbstractFlux end
+struct DiffusionFlux end
 const ∇ = DiffusionFlux()
 
 function (::Centered)(::DiffusionFlux, mesh::AbstractCartesianMesh, w, i_face)

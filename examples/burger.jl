@@ -2,7 +2,7 @@ using FiniteVolumes, OrdinaryDiffEq, Plots
 
 mesh = PeriodicCartesianMesh(100)
 u0 = [sin(2π*x) for x in cell_centers(mesh)]
-F(u) = u^2 / 2
+F(u, n) = u^2 / 2 * n
 
 dudt(u, t, p) = -FiniteVolumes.div(F, mesh, u, Upwind())
 problem = ODEProblem(dudt, u0, (0.0, 0.5))

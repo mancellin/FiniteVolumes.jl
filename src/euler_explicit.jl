@@ -7,7 +7,7 @@ struct FixedCourant{T}
     fixed_courant::T
 end
 
-struct TimeDependantFlux{F} <: AbstractFlux
+struct TimeDependantFlux{F}
     flux_at::F
 end
 

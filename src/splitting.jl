@@ -1,5 +1,5 @@
 
-struct UnidirectionalFlux{D, F} <: AbstractFlux
+struct UnidirectionalFlux{D, F}
     flux::F
 end
 UnidirectionalFlux{D}(f) where D = UnidirectionalFlux{D, eltype(f)}(f)

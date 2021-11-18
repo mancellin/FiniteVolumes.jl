@@ -255,9 +255,7 @@ version = "2.8.1"
 
 [[FiniteVolumes]]
 deps = ["ColorTypes", "ForwardDiff", "LinearAlgebra", "ProgressMeter", "RecipesBase", "SparseArrays", "StaticArrays"]
-git-tree-sha1 = "a766b8368307b5069807282bbbe4a442121fb026"
-repo-rev = "main"
-repo-url = ".."
+path = ".."
 uuid = "1ee31f8c-159e-4600-8f10-217557b81b0c"
 version = "0.4.0-dev"
 

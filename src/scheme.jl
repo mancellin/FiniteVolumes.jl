@@ -10,7 +10,7 @@ numerical_flux(flux, mesh, w, scheme, i_face, dt) = scheme(flux, mesh, w, i_face
 struct Centered <: Scheme end
 ####################################
 
-function (::Centered)(flux::Union{LinearAdvectionFlux, FluxFunction{<:Number}}, mesh, w, i_face)
+function (::Centered)(flux::LinearAdvectionFlux, mesh, w, i_face)
     n = normal_vector(mesh, i_face)
     i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
     return 0.5*(flux(w[i_cell_1], n) + flux(w[i_cell_2], n))
@@ -20,7 +20,7 @@ end
 struct Downwind <: Scheme end
 ####################################
 
-function (::Downwind)(flux::Union{LinearAdvectionFlux, FluxFunction{<:Number}}, mesh, w, i_face)
+function (::Downwind)(flux::LinearAdvectionFlux, mesh, w, i_face)
     n = normal_vector(mesh, i_face)
     i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
     λ = eigvals(flux, (w[i_cell_1] + w[i_cell_2])/2, n)
@@ -32,7 +32,7 @@ struct Upwind <: Scheme end
 ##################################
 
 # Single-wave problems
-function (::Upwind)(flux::Union{LinearAdvectionFlux, FluxFunction{<:Number}}, mesh, w, i_face)
+function (::Upwind)(flux::LinearAdvectionFlux, mesh, w, i_face)
     n = normal_vector(mesh, i_face)
     i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
     λ = eigvals(flux, (w[i_cell_1] + w[i_cell_2])/2, n)
@@ -79,10 +79,7 @@ end
 #                                     Div                                      #
 ################################################################################
 
-# If `flux` is not an AbstractFlux already, wrap it into a FluxFunction object.
-div!(Δw, flux, mesh, w, args...) = div!(Δw, FluxFunction{eltype(w), nb_dims(mesh), typeof(flux)}(flux), mesh, w, args...)
-
-function div!(Δw, flux::AbstractFlux, mesh, w, scheme::Scheme, dt=0.0)
+function div!(Δw, flux, mesh, w, scheme::Scheme, dt=0.0)
     @inbounds for i_face in inner_faces(mesh)
         ϕ = numerical_flux(flux, mesh, w, scheme, i_face, dt)
         i_cell_1, i_cell_2 = cells_next_to_inner_face(mesh, i_face)
@@ -91,7 +88,7 @@ function div!(Δw, flux::AbstractFlux, mesh, w, scheme::Scheme, dt=0.0)
     end
 end
 
-function div!(Δw, flux::AbstractFlux, mesh, w, scheme::BoundaryCondition, dt=0.0)
+function div!(Δw, flux, mesh, w, scheme::BoundaryCondition, dt=0.0)
     @inbounds for i_face in boundary_faces(mesh)
         ϕ = numerical_flux(flux, mesh, w, scheme, i_face, dt)
         i_cell = cell_next_to_boundary_face(mesh, i_face)
@@ -99,7 +96,7 @@ function div!(Δw, flux::AbstractFlux, mesh, w, scheme::BoundaryCondition, dt=0.
     end
 end
 
-function div!(Δw, flux::AbstractFlux, mesh, w, schemes::NTuple{N, Union{Scheme, BoundaryCondition}}, dt=0.0) where N
+function div!(Δw, flux, mesh, w, schemes::NTuple{N, Union{Scheme, BoundaryCondition}}, dt=0.0) where N
     for scheme in schemes
         div!(Δw, flux, mesh, w, scheme, dt)
     end

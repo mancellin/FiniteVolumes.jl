@@ -71,10 +71,10 @@ riemann_problem(mesh, w₁, w₂, step_position=0.5) = [x[1] < step_position ? w
         mesh = CartesianMesh(10)
         w₀ = map(x -> SVector{2}(sin(2π*x), cos(2π*x)), cell_centers(mesh))
 
-        f = FluxFunction{SVector{2}, 1}(α -> SVector(α[2], α[1]))
+        f(α, n) = n * SVector(α[2], α[1])
         t, w₁ = FiniteVolumes.run(f, mesh, w₀, time_step=FixedCourant(0.2), nb_time_steps=10, verbose=false)
 
-        struct Wave1DFlux{T} <: FiniteVolumes.AbstractFlux
+        struct Wave1DFlux{T}
             velocity::T
         end
 
@@ -92,7 +92,7 @@ riemann_problem(mesh, w₁, w₂, step_position=0.5) = [x[1] < step_position ? w
 
     @testset "1D Burger" begin
         mesh = CartesianMesh(100)
-        flux = FluxFunction{Float64, 1}(u -> 0.5*u.^2)
+        flux(u, n) = 0.5*u.^2 * n
         step(x) = 0.33 < x[1] < 0.66 ? 1.0 : 0.0
         w₀ = map(step, cell_centers(mesh))
         t, w = FiniteVolumes.run(flux, mesh, w₀, time_step=FixedCourant(0.2), nb_time_steps=10, verbose=false)
@@ -141,7 +141,7 @@ riemann_problem(mesh, w₁, w₂, step_position=0.5) = [x[1] < step_position ? w
     end
 
     @testset "2D rotation" begin
-        struct AdvectionFlux{V} <: FiniteVolumes.AbstractFlux
+        struct AdvectionFlux{V}
             velocity::V
         end
 
@@ -175,7 +175,7 @@ riemann_problem(mesh, w₁, w₂, step_position=0.5) = [x[1] < step_position ? w
         # ⟺ ∂_t α + div(α^2/2 * u₀) = 0
         # ≡ rotated 1D Burger
         mesh = PeriodicCartesianMesh(20, 20)
-        flux = FluxFunction{Float64, 2}(α -> 0.5*α.^2 * [1.0, 1.0])
+        flux(α, n) = 0.5*α.^2 * n' * [1.0, 1.0]
         vertical_band(x) = 0.33 < x[1] < 0.66 ? 1.0 : 0.0
         w₀ = map(vertical_band, cell_centers(mesh))
         t, w = FiniteVolumes.run(flux, mesh, w₀, time_step=FixedCourant(0.2), nb_time_steps=10, verbose=false)
@@ -233,7 +233,7 @@ end
             λ2 = FiniteVolumes.eigvals(flux, v, n)
             @test λ1 ≈ λ2
             eg1 = LinearAlgebra.eigen(Array(J1)).vectors
-            eg2 = LinearAlgebra.eigen(flux, v, n)[2]
+            eg2 = FiniteVolumes.eigen(flux, v, n)[2]
             for (c1, c2) in zip(eachcol(eg1), eachcol(eg2))
                 @test maximum(abs.(c2)) .* abs.(c1) ≈ maximum(abs.(c1)) .* abs.(c2)
             end

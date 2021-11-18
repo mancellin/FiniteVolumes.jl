@@ -3,32 +3,18 @@
 using Test
 using StaticArrays
 using FiniteVolumes
-using FiniteVolumes.CartesianMeshes: Half
 
 @testset "Fluxes" begin
 
-@testset "LinearAdvection" begin
-    mesh = CartesianMesh(10)
-    w0 = map(x -> sin(2π*x), cell_centers(mesh))
-    i_face = (Half(11),)
-
-    flux = LinearAdvectionFlux(1.0)
-    @test (Upwind())(flux, mesh, w0, i_face) == w0[5]
-    # @btime (Upwind())($f, $mesh, $w, $i_face)  # ~4ns
-
-    flux = LinearAdvectionFlux(-1.0)
-    @test (Upwind())(flux, mesh, w0, i_face) == -w0[6]
-end
-
 @testset "Anonynous models" begin
     @testset "(1 var, 1D)" begin
-        flux = FluxFunction{Float64, 1}(α -> 0.5*α.^2)
+        flux(α, n) = 0.5*α.^2 * n
         @test flux(3.0, 1.0) == 4.5
         @test FiniteVolumes.jacobian(flux, 2.0, 1.0) == 2.0
     end
 
     @testset "(1 var, 2D)" begin
-        flux = FluxFunction{Float64, 2}(α -> α .* [α, 1.0])
+        flux(α, n) = n' * [α, 1.0] * α
         @test flux(1.0, SVector(1.0, 0.0)) == 1.0
         @test flux(1.0, SVector(0.0, 1.0)) == 1.0
         @test FiniteVolumes.jacobian(flux, 1.0, SVector(1.0, 0.0)) == 2.0
@@ -36,19 +22,32 @@ end
     end
 
     @testset "(2 var, 1D)" begin
-        flux = FluxFunction{SVector{2, Float64}, 1}(u -> [0.5*u[1].^2 + u[2], u[2]])
+        flux(u, n) = [0.5*u[1].^2 + u[2], u[2]] .* n
         @test flux([1.0, 2.0], 1.0) == [2.5, 2.0]
         @test flux(SVector(1.0, 2.0), 1.0) == SVector(2.5, 2.0)
         @test FiniteVolumes.jacobian(flux, [1.0, 1.0], 1.0) == [1.0 1.0; 0.0 1.0]
     end
 
     @testset "(2 var, 2D)" begin
-        flux = FluxFunction{SVector{2, Float64}, 2}(u -> [[u[1], u[2]], [0.0, 0.0]])
+        flux(u, n) = n' * [[u[1], u[2]], [0.0, 0.0]]
         @test flux([1.0, 2.0], [1.0, 0.0]) == [1.0, 2.0]
         @test flux([1.0, 2.0], [0.0, 1.0]) == [0.0, 0.0]
         @test FiniteVolumes.jacobian(flux, [1.0, 2.0], [1.0, 0.0]) == [1.0 0.0; 0.0 1.0]
         @test FiniteVolumes.jacobian(flux, [1.0, 2.0], [0.0, 1.0]) == [0.0 0.0; 0.0 0.0]
     end
+end
+
+@testset "LinearAdvection" begin
+    mesh = CartesianMesh(10)
+    w0 = [sin(2π*x) for x in cell_centers(mesh)]
+    i_face = (FiniteVolumes.CartesianMeshes.Half(11),)
+
+    flux = LinearAdvectionFlux(1.0)
+    @test (Upwind())(flux, mesh, w0, i_face) == w0[5]
+    # @btime (Upwind())($f, $mesh, $w, $i_face)  # ~4ns
+
+    flux = LinearAdvectionFlux(-1.0)
+    @test (Upwind())(flux, mesh, w0, i_face) == -w0[6]
 end
 
 @testset "Shallow water" begin
@@ -62,10 +61,10 @@ end
             @test all(FiniteVolumes.eigvals(f, SVector(h, h*u), 1.0) .≈ SVector(u-sqrt(h*f.g), u+sqrt(h*f.g)))
         end
 
-        f2 = FluxFunction{SVector{2}, 1}(v -> SVector(v[2], v[2]^2/v[1] + v[1]^2*9.81/2))
+        f2(v, n) = n * SVector(v[2], v[2]^2/v[1] + v[1]^2*9.81/2)
         mesh = CartesianMesh(2)
         w = [SVector(1.0, 0.0), SVector(2.0, 0.0)]
-        i_face = (Half(3),)
+        i_face = (FiniteVolumes.CartesianMeshes.Half(3),)
         @test (Upwind())(f, mesh, w, i_face) ≈ (Upwind())(f2, mesh, w, i_face)
     end
 
