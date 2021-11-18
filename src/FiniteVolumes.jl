@@ -25,7 +25,7 @@ export directional_splitting
 
 # Time solver
 include("./euler_explicit.jl")
-export FixedCourant
+export FixedCourant, TimeDependantFlux
 
 # EXPERIMENTS
 include("./diffusion.jl")
