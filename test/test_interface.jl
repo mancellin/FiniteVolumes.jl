@@ -48,7 +48,7 @@ using FiniteVolumes
     end
 
     @testset "OrdinaryDiffEq" begin
-        using OrdinaryDiffEq
+        using OrdinaryDiffEq, OrdinaryDiffEqLowOrderRK, OrdinaryDiffEqSDIRK
         mesh = CartesianMesh(10)
         flux = LinearAdvectionFlux(1.0)
 
@@ -65,7 +65,7 @@ using FiniteVolumes
     end
 
     @testset "Implicit heat equation" begin
-        using OrdinaryDiffEq
+        using OrdinaryDiffEq, OrdinaryDiffEqSDIRK
         mesh = PeriodicCartesianMesh(10)
         w₀ = map(x -> exp(-1000*(x - 0.5)^2), cell_centers(mesh))
         dwdt(w, p, t) = -FiniteVolumes.div(FiniteVolumes.∇, mesh, w, FiniteVolumes.Centered())
